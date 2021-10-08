@@ -98,9 +98,9 @@ Structural equation model (SEM) encompasses a variety of statistical techniques.
 
 and any combination of them. 
 
-In this course, we will look at linear regression and mediation analysis using SEM, confirmatory factor analysis which involves specifying *latent variables* as the cause for the observed responses, and the *full SEM* which combines linear regression and mediation together with confirmatory factor analysis to allow us to specify the relationships of interest between the *underlying latent variables*. 
+In this course, we will look at linear regression and mediation analysis using SEM, confirmatory factor analysis which involves specifying *latent variables* as the cause for the observed responses, and the *general SEM* which combines linear regression and mediation together with confirmatory factor analysis to allow us to specify the relationships of interest between the *underlying latent variables*. 
 
-The full SEM gets us closer to the *constructs of interest* (attitudes, personality characteristics, etc.) by separating the *part of the response caused by the latent variable* and the *measurement error*.
+The general SEM gets us closer to the *constructs of interest* (attitudes, personality characteristics, etc.) by separating the *part of the response caused by the latent variable* and the *measurement error*.
 
 ## Advantages of SEM 
 
@@ -124,11 +124,11 @@ An investigation using SEM entails the following steps:
 5. (Respecification)
 6. Interpretation 
 
-Most of these steps take place in a traditional type of model as well, even if they are not usually explicated. Steps 4 and 5, model evaluation and respecification, are arguably specific to SEM and can be seen as 
+Most of these steps take place in a traditional type of model as well, even if they are not usually explicated. Steps 4 and 5, model evaluation and respecification are arguably specific to SEM. 
 
 ## Specification 
 
-*Specification* is the first step to any SEM model. In fact, it is the first step in just about any statistical analysis, but the *flexibility of SEM makes it much more involved*. 
+*Specification* is the first step to any SEM. In fact, it is the first step in just about any statistical analysis, but the *flexibility of SEM makes it much more involved*. 
 
 Specifying a model means answering the following questions: 
 
@@ -221,7 +221,7 @@ m1.fit <- sem(model = m1,
 
 Each of these come with their own benefits and sometimes drawbacks and can be chosen according the the requirements of the model at hand. 
 
-Estimation is a very complicated topic and requires a good grasp of algebra, calculus and statistics to fully understand. We can look at it in broad sense in this workshop; those interested can look at the xxxnotes on maximum likelihood estimation in SEM as well as @Ferron2007; @Bollen1989 for a much more detailed explanation.  
+Estimation is a very complicated topic and requires a good grasp of algebra, calculus and statistics to fully understand. We can look at it in broad sense in this workshop; those interested can see @Ferron2007; @Bollen1989 for a much more detailed explanation.  
 
 ## Evaluation 
 

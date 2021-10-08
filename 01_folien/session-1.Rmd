@@ -850,28 +850,6 @@ Etwas genauer gesagt:
 
 --- 
 
-## Schätzung 
-
-
-
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-Die Implementation in SEM ist viel ausgeklügelter: 
-
-- benutze die Steigung bei einem bestimmten Wert für den Parameter, um die Distanz zum Optimum einzuschätzen
-
-D.h. 
-
-- wenn die Steigung sehr steil ist, ist das Optimum weit entfernt
-- wenn die Steigung relativ flach wird, ist das Optimum nah
-- wir benutzen die letzte Steigung, um den Schritt zum nächsten Schätzwert zu bestimmen
-
-
-- wenn die Steigung steil ist, kann der Schritt groß sein
-- wenn die Steigung flach ist, muss der Schritt klein sein
-
----
-
 ## Normalität
 
 Wir verwenden ML als Schätzer in diesem Kurs

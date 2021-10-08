@@ -53,7 +53,7 @@ head(df$inc); hist(df$inc)
 Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
 
 ```{r estimate1, exercise=TRUE}
-
+# Bitte nennen Sie das Objekt m1 und das gefittete Modell m1.fit. 
 ```
 
 ```{r estimate1-solution}
@@ -100,7 +100,7 @@ head(df$pa31r)
 Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
 
 ```{r estimate, exercise=TRUE}
-
+# Bitte nennen Sie das Objekt m2 und das gefittete Modell m2.fit. 
 ```
 
 ```{r estimate-solution}
@@ -125,7 +125,7 @@ Interpretieren Sie die Regressionskoeffizienten.
 Erweitern Sie das Mediationsmodell in dem Sie den direkten und den indirekten Effekt von `inc1000` auf `px06` definieren. 
 
 ```{r estimate2, exercise=TRUE}
-
+# Bitte nennen Sie das Objekt m3 und das gefittete Modell m3.fit. 
 ```
 
 ```{r estimate2-solution}
@@ -148,7 +148,7 @@ summary(m3.fit)
 Schätzen Sie das Modell mit Mittelwertstruktur.
 
 ```{r estimate-int, exercise=TRUE}
-
+# Bitte nennen Sie das Objekt m4 und das gefittete Modell m4.fit. 
 ```
 
 ```{r estimate-int-solution}
@@ -230,4 +230,27 @@ semPaths(m4.fit,
          nCharEdges = 0,     # Keine Abkürzungen
          edge.label.cex = 1) # Größe Labels 
 ```
+
+### Aufgabe 3
+
+Schätzen Sie das zweite Modell (`m2`) erneut diesmal getrennt für Männer und Frauen (Variable `frau`). Dazu müssen Sie die Labels von `m2` entweder entfernen oder getrennte Labels für die Gruppen verwenden (z.B., `c(label1, label2)`). 
+
+```{r multigroup, exercise=TRUE, exercise.setup="setuppath"}
+# Bitte nennen Sie das Objekt m5 und das gefittete Modell m5.fit. 
+```
+
+```{r multigroup-solution}
+m5 <- '
+# Regressionen
+  px06  ~ inc1000 + pa31r
+  pa31r ~ inc1000
+# Felervarianz 
+  px06  ~~ px06
+  pa31r ~~ pa31r
+'
+m5.fit <- sem(model = m5, data = df, estimator = "ML",
+              meanstructure = TRUE, group = "frau")
+summary(m5.fit)
+```
+
 

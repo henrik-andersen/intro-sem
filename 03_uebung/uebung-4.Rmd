@@ -31,7 +31,7 @@ poplsm ~~ phi32*econps
 mxx.fit <- sem(mxx, df)
 # summary(mxx.fit, standardized = TRUE, fit.measures = TRUE)
 library(semPlot)
-semPaths(mxx.fit, style = "lisrel", rotation = 1, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+semPaths(mxx.fit, style = "lisrel", rotation = 1, sizeMan = 6, sizeLat = 10, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
 ```
 
 Inspizieren Sie die verwendeten Variablen mit `head()`. 
@@ -194,7 +194,8 @@ semPaths(m1.fit,
          style = "lisrel",   # lisrel Notation
          whatLabels = "est", # geschätzte Parameterwerte zeigen
          rotation = 1,       # Von links (exo) nach rechts (endo)
-         sizeMan = 8,        # Manifeste Variablen Größe 
+         sizeMan = 6,        # Manifeste Variablen Größe
+         sizeLat = 10,       # Latente Variablen Größe
          nCharNodes = 0,     # Keine Abkürzungen
          nCharEdges = 0,     # Keine Abkürzungen
          edge.label.cex = 1) # Größe Labels 
@@ -260,7 +261,7 @@ poplsm ~ gamma21*econps
 mx.fit <- sem(mx, df)
 # summary(mx.fit, standardized = TRUE, fit.measures = TRUE)
 library(semPlot)
-semPaths(mx.fit, style = "lisrel", rotation = 2, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+semPaths(mx.fit, style = "lisrel", rotation = 2, sizeMan = 6, sizeLat = 10, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
 ```
 
 Schätzen Sie das Modell und fordern Sie eine Zusammenfassung mit standardisierten Lösungen und Fitmaße an.
@@ -282,8 +283,8 @@ m3 <- '
 # Exogene Latente Variable Varianz
   econps ~~ phi33*econps
 # Disturbance Varianz
-  fremdf ~~ phi11*fremdf 
-  poplsm ~~ phi22*poplsm 
+  fremdf ~~ psi11*fremdf 
+  poplsm ~~ psi22*poplsm 
 # Messfehler
   px07  ~~ theta11*px07
   px08  ~~ theta21*px08
@@ -311,8 +312,8 @@ m3 <- '
 # Exogene Latente Variable Varianz
   econps ~~ phi33*econps
 # Disturbance Varianz
-  fremdf ~~ phi11*fremdf 
-  poplsm ~~ phi22*poplsm 
+  fremdf ~~ psi11*fremdf 
+  poplsm ~~ psi22*poplsm 
 # Messfehler
   px07  ~~ theta11*px07
   px08  ~~ theta21*px08
@@ -335,4 +336,77 @@ Verwenden Sie `lavTestWald()`, um zu überprüfen, ob der Pfad `econps` $\righta
 
 ```{r wald-solution}
 lavTestWald(m2.fit, constraints = "gamma1 == 0")
+```
+
+### Aufgabe 4
+
+Schätzen Sie folgendes MIMIC Modell: 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mxxx <- '
+# Messmodelle
+  fremdf =~ 1*px07  + l21*px08  + l31*px09               
+  poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+  econps =~ 1*ep01  + l23*ep03    
+# Regressionen
+  fremdf ~ beta13*econps + beta12*poplsm + gamma11*frau 
+  poplsm ~ beta23*econps + gamma21*frau
+  econps ~ gamma31*frau
+# Disturbance Varianz
+  fremdf ~~ psi11*fremdf 
+  poplsm ~~ psi22*poplsm 
+  econps ~~ psi33*econps
+# Messfehler
+  px07  ~~ theta11*px07
+  px08  ~~ theta21*px08
+  px09  ~~ theta31*px09
+  pa30r ~~ theta12*pa30r
+  pa31r ~~ theta22*pa31r
+  pa32r ~~ theta32*pa32r
+  pa35r ~~ theta42*pa35r
+  ep01  ~~ theta13*ep01
+  ep03  ~~ theta23*ep03
+'
+mxxx.fit <- cfa(model = mxxx, data = df, estimator = "ML")
+# summary(mxxx.fit, standardized = TRUE, fit.measures = TRUE)
+library(semPlot)
+semPaths(mxxx.fit, style = "lisrel", rotation = 1, layout = "tree2", 
+         reorder = TRUE, nCharNodes = 0, nCharEdges = 3, edge.label.cex = 0.75, curvePivot = TRUE, optimizeLatRes = TRUE,
+         springLevels = FALSE, layoutSplit = TRUE,
+         sizeLat = 10, 
+         sizeMan = 6)
+```
+
+```{r mimic, exercise=TRUE}
+# Bitte nennen Sie das Objekt m4 und das gefittete Modell m4.fit. 
+```
+
+```{r mimic-solution}
+m4 <- '
+# Messmodelle
+  fremdf =~ 1*px07  + l21*px08  + l31*px09               
+  poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+  econps =~ 1*ep01  + l23*ep03    
+# Regressionen
+  fremdf ~ beta13*econps + beta12*poplsm + gamma11*frau 
+  poplsm ~ beta23*econps + gamma21*frau
+  econps ~ gamma31*frau
+# Disturbance Varianz
+  fremdf ~~ psi11*fremdf 
+  poplsm ~~ psi22*poplsm 
+  econps ~~ psi33*econps
+# Messfehler
+  px07  ~~ theta11*px07
+  px08  ~~ theta21*px08
+  px09  ~~ theta31*px09
+  pa30r ~~ theta12*pa30r
+  pa31r ~~ theta22*pa31r
+  pa32r ~~ theta32*pa32r
+  pa35r ~~ theta42*pa35r
+  ep01  ~~ theta13*ep01
+  ep03  ~~ theta23*ep03
+'
+m4.fit <- cfa(model = m4, data = df, estimator = "ML")
+summary(m4.fit, standardized = TRUE, fit.measures = TRUE)
 ```

@@ -777,35 +777,19 @@ lavTestWald(sem2.fit, constraints = "gamma11 == 0")
 
 # Aussicht
 
-xxx
+Fortgeschrittene Anwendungen:
 
-# Backup 
+- Logit/Probit Regression für nominale AVs
+- Mehrebeneanalyse für gruppierte Daten
+- Längschnittanalyse für widerholte Messungen der selben Personen
+- Messäquivalenz für Gruppenvergleiche 
+- u.v.m.!
 
+# Schluss!
 
-## Annahmen
+Vielen Dank für Ihre Aufmerksamkeit und Mitarbeit! 
 
-Die Modellannahmen sind die selben, die wir bisher besprochen hatten
-
-- Variablen sind mittelwert zentriert
-- Linearität 
-- keine perfekte Multikollinearität
-- keine Autokorrelation, bezogen auf 
-  + $\E(\delta_{j_{i}}\delta_{js}) = 0, \ i \ne s$ 
-  + $\E(\epsilon_{k_{i}}\epsilon_{k_{s}}) = 0, \ i \ne s$ 
-  + $\E(\zeta_{i}\zeta_{s}) = 0, \ i \ne s$
-- Homoskedastizität, bezogen auf 
-  + $\Var(\delta | \xi) = \Var(\delta)$
-  + $\Var(\epsilon | \eta) = \Var(\epsilon)$ 
-  + $\Var(\zeta | \xi) = \Var(\zeta)$
-- Normalverteilung, bezogen auf
-  + $\delta \sim N(0, \theta_{\delta})$
-  + $\epsilon \sim N(0, \theta_{\epsilon})$
-  + $\zeta \sim N(0, \psi)$
-- Exogenität, bezogen auf
-  + $\E(\delta | \xi) = E(\delta) = 0$, $\Cov(\delta_{j},\delta_{k}) = 0, \ j \ne k$
-  + $\E(\epsilon | \eta) = \E(\epsilon) = 0$
-  + $\E(\zeta | \xi) = \E(\zeta) = 0$
-
+Fragen, Kommentare an: [henrik.andersen@soziologie.tu-chemnitz.de](henrik.andersen@soziologie.tu-chemnitz.de)
 
 # Referenzen 
 

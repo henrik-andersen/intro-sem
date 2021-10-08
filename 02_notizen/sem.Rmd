@@ -654,7 +654,7 @@ If we fit the entire model simultaneously and find that the fit is inadequate, i
 
 On the other hand, our measurement model might be correctly specified but our structural model may be misspecified. In Figure \ref{fig:semmisfit}, we are (implicitly) assuming $\eta_{1}$ is a total mediator of the effect of $\xi_{1}$ on $\eta_{2}$. If this assumption is wrong, and there is an effect over and above the mediator (the direct effect of $\xi_{1}$ on $\eta_{2}$, shown in red), then our structural model will be misspecified and our model will fit suboptimally. 
 
-The solution to this problem is to first *fit a CFA with all the latent variables simultaneously* (notice this is not the same as estimating a separate CFA for each construct). We *allow the latent variables to covary with each other freely*. Allowing them to all covary with each other means the structural portion of the model is saturated; if we allow $\xi_{1}$ to covary with $\eta_{1}$ and $\eta_{2}$ and $\eta_{2}$ to covary with $\eta_{3}$ then we have zero degrees of freedom and the *fit at the structural level will be perfect.* If the model nevertheless does not fit adequately, then we know that the source of misfit is at the measurement level --- it is the only level on which we are imposing any constraints. 
+The solution to this problem is to first *fit a CFA with all the latent variables simultaneously* (notice this is not the same as estimating a separate CFA for each construct). We *allow the latent variables to covary with each other freely*. Allowing them to all covary with each other means the structural portion of the model is saturated; if we allow $\xi_{1}$ to covary with $\eta_{1}$ and $\eta_{2}$ and $\eta_{1}$ to covary with $\eta_{2}$ then we have zero degrees of freedom and the *fit at the structural level will be perfect.* If the model nevertheless does not fit adequately, then we know that the source of misfit is at the measurement level --- it is the only level on which we are imposing any constraints. 
 
 ## Simultaneous CFA
 
@@ -666,7 +666,7 @@ library(haven)
 library(lavaan)
 
 # Set working directory 
-setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+setwd("../04_data")
 
 # Import ALLBUS 2018 
 df <- read_sav("allbus2018.sav")

@@ -84,7 +84,7 @@ They use three indicators found in the ALLBUS 2006 to measure xenophobia, which 
 - $x_{2}$: "Foreigners should marry within their own group" (`px07`)
 - $x_{3}$: "Attacks on asylum-seeker housing is understandable" (`px10`)
 
-(roughly translated from German), which were measured on a Likert scale of 1: "fully disagree", ..., 5: "fully agree". Notice the indicators are not continuous and therefore deviate from the ideal normality assumption (at best, they can be thought of as 'coarse' or 'rough' measures of the actual normally distributed variable). We will ignore this fact for now and come back to it later. 
+(roughly translated from German), which were measured on a Likert scale of 1: "fully disagree", ..., 5: "fully agree". Notice the indicators are not continuous and therefore deviate from the ideal normality assumption (at best, they can be thought of as 'coarse' or 'rough' measures of the actual normally distributed variable). We will ignore this fact out of convenience. 
 
 We see that there are indeed sizable correlations amongst these three variables: 
 
@@ -93,13 +93,13 @@ We see that there are indeed sizable correlations amongst these three variables:
 library(haven)
 
 # Set working directory 
-setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+setwd("../04_data")
 
 # Import ALLBUS 2018 
-df <- read_sav("allbus_2018_small.sav")
+df <- read_sav("allbus2018.sav")
 
 # Show correlation matrix 
-cor(df[, c("px06", "px07", "px10")])
+cor(df[, c("px06", "px07", "px10")], use = "complete.obs")
 ```
 
 and we assume there is a latent construct, which we could call xenophobia, that is responsible for these correlations. 
@@ -229,7 +229,7 @@ We assume the errors, $\delta_{j}$, are random and simply due to impercise measu
 
 Both of these assumptions are very important. Let us look at this more closely, beginning with the uncorrelatedness of the latent variable with each of the errors. 
 
-Note that we can also express these assumptions in terms of expectations as $\E(\bm{\delta} | \eta) = \E(\bm{\delta}) = \bm{0}$ (where since the variables are centered (if not, we would include an intercept), it is safe to assume the unconditional expectation of the errors is zero), and $\E(\delta_{j}\delta_{k}) = 0$, $j \ne k$. The first assumption is analogous to the assumption that the error is uncorrelated with the predictor in a linear regression model. Here, the only thing different is that the independent variable happens to be the latent variable.
+Note that we can also express these assumptions in terms of expectations as $\E(\bm{\delta} | \eta) = \E(\bm{\delta}) = \bm{0}$ (where since the variables are centered --- if not, we would include an intercept --- it is safe to assume the unconditional expectation of the errors is zero), and $\E(\delta_{j}\delta_{k}) = 0$, $j \ne k$. The first assumption is analogous to the assumption that the error is uncorrelated with the predictor in a linear regression model. Here, the only thing different is that the independent variable happens to be the latent variable.
 
 Take the second indicator, $x_{2}$: "Foreigners should marry within their own group" (`px07`). We can imagine xenophobic individuals will agree with this statement because they dislike cultural or ethnic mixing. We can also image individuals with traditional values will agree with this statement because they believe marriage between partners with similar backgrounds tends to work out better. We can furthermore assume that traditional values are correlated with xenophobic attitudes, i.e., those with traditional values also tend to be more xenophobic. So we call xenophobia $\xi_{1}$, and could represent traditional values as a second latent variable, $\xi_{2}$. In our measurement model, we assumed that xenophobia causes the observed score on the indicator `px07` and $\E(\delta_{2}, \xi_{1}) = 0$. But if our alternate theory is correct, then the actual model would be 
 \begin{align}
@@ -307,7 +307,7 @@ Once we start bringing in latent variables, the topic of identification starts t
 Let us reinspect the covariance matrix of the observed items:
 
 ```{r}
-cov(df[, c("px06", "px07", "px10")])
+cov(df[, c("px06", "px07", "px10")], use = "complete.obs")
 ```
 
 There are three items and so we have three variances and three nonredundant covariances for *six pieces of observed information*. Notice this follows the $p(p + 1)/2$ formula, where $p$ is the number of observed variables, with $3(3 + 1)/2 = 12/2 = 6$. 
@@ -361,7 +361,7 @@ From here, we can set $\lambda_{jk}^{2} = 1$ and solve for $\Var(\xi_{k})$ which
 
 We use the `=~` or 'measured by' operator to specify our measurement model. That is, we create a latent variable, which we can call `xi1` that is measured by the three indicators, `px06`, `px07` and `px10`. We will use the marker-item method and fix the factor loading for `px06` to 1.0 (we could, however, fix any one of the three factor loadings to one, it does not have to be the first). We will further use labels for the other two factor loadings (`l2`, `l3` for 'loading 2', 'loading 3'). These are entirely optional, but it can help us quickly find what we are looking for in the summary output, as well as help us easily extract things from the fitted object. 
 
-The indicators are all endogenous variables, so when we specify their variances (also optional), we are referring to the unexplained part, i.e., the measurement error. We use labels here as well, `d1` for 'delta 1', etc. Finally, we can add the variance of the latent variable, which is also optional. This variance is the only exogenous variance in the model. 
+The indicators are all endogenous variables, so when we specify their variances (also optional), we are referring to the unexplained part, i.e., the measurement error. We use labels here as well, `t1` for 'theta 1', etc. Finally, we can add the variance of the latent variable, which is also optional. This variance is the only exogenous variance in the model. 
 
 ```{r message=FALSE}
 library(lavaan)
@@ -370,10 +370,10 @@ library(lavaan)
 cfa1 <- '
 # Measurement model 
   xi1 =~ 1*px06 + l2*px07 + l3*px10
-# Error variances
-  px06 ~~ d1*px06
-  px07 ~~ d2*px07
-  px10 ~~ d3*px10
+# Measurement error variances
+  px06 ~~ t1*px06
+  px07 ~~ t2*px07
+  px10 ~~ t3*px10
 # Latent variable variances 
   xi1 ~~ phi1*xi1
 '
@@ -532,11 +532,18 @@ More formally, however, we say the reliability of our measurement of the latent 
 \text{REL} & = \frac{k \cdot r}{1 + (k - 1)r}
 \end{align}
 
-where $k$ is the number of indicators and $r$ is the average correlation between the three [@Urban2014, p. 20]. By covariance algebra (or tracing), we see that the correlation between any two indicators is given by the product of the standardized factor loadings. So, in this case, we have $\lambda_{11}^{*} = 0.647$, $\lambda_{21}^{*} = 0.707$ and $\lambda_{31}^{*} = 0.506$. So, the model-implied correlation between $x_{1}$ and $x_{2}$ is $0.647 \cdot 0.707 = `r round(0.647 * 0.707, 3)`$, between $x_{1}$ and $x_{3}$ it is $0.647 \cdot 0.506 = `r round(0.647 * 0.506, 3)`$ and between $x_{2}$ and $x_{3}$ it is $0.707 \cdot 0.506 = `r round(0.707 * 0.506, 3)`$. The average correlation is $r = (0.457 + 0.327 + 0.358) / 3 = `r round(1 / 3 * (0.647 * 0.707 + 0.647 * 0.506 + 0.707 * 0.506), 3)`$. So, we have 
+where $k$ is the number of indicators and $r$ is the average correlation between the three [@Urban2014, p. 20]. By covariance algebra (or tracing), we see that the correlation between any two indicators is given by the product of the standardized factor loadings. So, in this case, we have $\lambda_{11}^{*} = 0.664$, $\lambda_{21}^{*} = 0.699$ and $\lambda_{31}^{*} = 0.481$. So, the model-implied correlation between $x_{1}$ and $x_{2}$ is $0.664 \cdot 0.699 = `r round(0.664 * 0.699, 3)`$, between $x_{1}$ and $x_{3}$ it is $0.664 \cdot 0.481 = `r round(0.664 * 0.481, 3)`$ and between $x_{2}$ and $x_{3}$ it is $0.699 \cdot 0.481 = `r round(0.699 * 0.481, 3)`$. The average correlation is $r = (`r round(0.664 * 0.699, 3)` + `r round(0.664 * 0.481, 3)` + `r round(0.699 * 0.481, 3)`) / 3 = `r round(1 / 3 * (0.664 * 0.699 + 0.664 * 0.481 + 0.699 * 0.481), 3)`$. So, we have 
 \begin{align}
-\text{REL} & = \frac{3 \cdot 0.381}{1 + (3 - 1)0.381} \\ 
- & = `r round((3 * 0.381) / (1 + (3 - 1)* 0.381), 3)`.
+\text{REL} & = \frac{3 \cdot 0.373}{1 + (3 - 1)0.373} \\ 
+ & = `r round((3 * 0.373) / (1 + (3 - 1)* 0.373), 3)`.
 \end{align}
+
+There is a function in the so-called `semTools` package for calculating the reliability of a measurement model with `semTools::reliability`. The package `semTools` provides functions to extend the functionality of `lavaan` (see [https://cran.r-project.org/web/packages/semTools/index.html](https://cran.r-project.org/web/packages/semTools/index.html)). We use `alpha` to calculate the Cronbach's Alpha reliability coefficient (with only a slight discrepancy compared to the statistic calculated above by hand):
+
+```{r warning=FALSE, message=FALSE}
+library(semTools)
+semTools::reliability(cfa1.fit, what = "alpha")
+```
 
 There are no hard rules concerning adequate reliability, but the general rules of thumb suggest a reliability > 0.7 is acceptable, > 0.8 is good, etc. Here, with a reliability measure of only 0.649, coupled with the low standardized factor loadings, we might not be completely satisfied with the measurement model. 
 
@@ -570,8 +577,8 @@ Note, however, that model fit can only be evaluated in *over-identified models*.
 
 We will now discuss various measures for model fit. To do so, we will first expand the example above to five indicators, so that our model is over-identified and we can evaluate the fit. To the three indicators listed above, we will add: 
 
-- $x_{4}$: "Should immigrants be forced to assimilate?" (`pa09r`) 
-- $x_{5}$: "Should we prohibit the influx of asylum-seekers?" (`pa19r`).
+- $x_{4}$: "Should immigrants be forced to assimilate? [recoded]" (`pa09r`) 
+- $x_{5}$: "Should we prohibit the influx of asylum-seekers? [recoded]" (`pa19r`).
 
 The new model with five indicators is displayed in Figure \ref{fig:measmod-five}. Note we will be using the marker-item method, fixing the factor loading of $x_{1}$ to one. 
 
@@ -610,30 +617,6 @@ The new model with five indicators is displayed in Figure \ref{fig:measmod-five}
 \end{tikzpicture}
 \end{figure}
 
-We need to recode these variables (the recoded versions are found in the dataset already) so that higher values indicate more agreement with the question, thereby indicating more xenophobic attitudes. This makes the two new indicators match the three old ones in terms of scale direction. 
-
-```{r}
-# Recode pa items
-df$pa09r <- abs(df$pa09 - 6)
-df$pa19r <- abs(df$pa19 - 6)
-
-# Re-label the indicators 
-df$pa09r <- labelled(df$pa09r, 
-                     labels = c("STIMME GAR NICHT ZU" = 1, 
-                                "STIMME EHER NICHT ZU" = 2, 
-                                "WEDER NOCH" = 3, 
-                                "STIMME EHER ZU" = 4, 
-                                "STIMME VOLL ZU" = 5), 
-                     label = "EINWANDERER ZU ANPASSUNG VERPFLICHTEN? (REKODIERT)")
-df$pa19r <- labelled(df$pa19r, 
-                     labels = c("STIMME GAR NICHT ZU" = 1, 
-                                "STIMME EHER NICHT ZU" = 2, 
-                                "WEDER NOCH" = 3, 
-                                "STIMME EHER ZU" = 4, 
-                                "STIMME VOLL ZU" = 5), 
-                     label = "ZUZUG FLUECHTLINGE UNTERBINDEN (REKODIERT)")
-```
-
 We can specify the new model as follows: 
 
 ```{r}
@@ -641,7 +624,7 @@ We can specify the new model as follows:
 cfa2 <- '
 # Measurement model 
   xi1 =~ 1*px06 + l2*px07 + l3*px10 + l4*pa09r + l5*pa19r
-# Error variances
+# Measurement error variances
   px06  ~~ d1*px06
   px07  ~~ d2*px07
   px10  ~~ d3*px10
@@ -656,7 +639,7 @@ cfa2.fit <- cfa(model = cfa2, data = df)
 
 When we request a summary of the model results, we will now add `fit.measures = TRUE` to the summary call, where a selection of common fit measures will be listed besides the chi square statistic: 
 
-```{r output.lines=9:44}
+```{r output.lines=10:45}
 summary(cfa2.fit, standardized = TRUE, fit.measures = TRUE)
 ```
 
@@ -681,7 +664,7 @@ we would reject the $\text{H}_{0}$ if chi square is significantly larger than ze
 
 In this case, we have:
 
-```{r output.lines=9:13, echo=FALSE}
+```{r output.lines=10:14, echo=FALSE}
 summary(cfa2.fit, standardized = TRUE, fit.measures = TRUE)
 ```
 
@@ -738,7 +721,7 @@ rmsea2 <- sqrt(chisq / df2) / sqrt(df2 * (n - 1)); rmsea2
 
 Normally, as a rule of thumb, we say models where RMSEA < 0.05 fit well, though values up to 0.08 are often seen as adequate. In our case, again RMSEA = `r round(fitMeasures(cfa2.fit, "rmsea"), 2)` which is above the 'cutoff' of 0.08 for an adequate fitting model. 
 
-```{r echo=FALSE, output.lines=35:40}
+```{r echo=FALSE, output.lines=36:41}
 summary(cfa2.fit, standardized = TRUE, fit.measures = TRUE)
 ```
 
@@ -755,7 +738,7 @@ where $\epsilon_{ij}$ are the *standardized residuals*, i.e., the elements of th
 
 ```{r}
 # S is the observed correlation matrix - not covariance matrix!
-S   <- round(cor(df[, c("px06", "px07", "px10", "pa09r", "pa19r")]), 3)
+S   <- round(cor(df[, c("px06", "px07", "px10", "pa09r", "pa19r")], use = "complete.obs"), 3)
 # Sig is the model-implied correlation matrix, as well 
 Sig <- lavInspect(cfa2.fit, "cor.ov")
 # R is the residual matrix 
@@ -772,7 +755,7 @@ srmr <- sqrt((1 / t) * sum(R^2 * lower.tri(R, diag = TRUE))); round(srmr, 3)
 
 SRMR can be found at the bottom of the fit measures output, 
 
-```{r echo=FALSE, output.lines=41:44}
+```{r echo=FALSE, output.lines=43:45}
 summary(cfa2.fit, standardized = TRUE, fit.measures = TRUE)
 ```
 
@@ -837,7 +820,7 @@ df_0    <- as.numeric(fitMeasures(cfa0.fit, "df"))
 cfi <- abs((chisq_0 - df_0 - chisq_m - df_m) / (chisq_0 - df_0)); cfi
 ```
 
-```{r output.lines=20:23, echo=FALSE}
+```{r output.lines=22:25, echo=FALSE}
 summary(cfa2.fit, standardized = TRUE, fit.measures = TRUE)
 ```
 
@@ -851,18 +834,6 @@ A full list of the most common fit measures, both absolute and comparative, can 
 # Get full list of fit measures 
 fitMeasures(cfa2.fit)
 ```
-
-# Outlook
-
-The full SEM:
-
-- one-step or two-step approach? 
-- attenuation bias -> paste the following into the next section
-
-SECTION TITLE: Benefits of latent variables 
-
-Besides the theoretical argument for latent variables, i.e., that is that certain abstract concepts cannot be measured directly and must be gleaned from information and associations contained in observed measures, there is a more practical reason to use them. Namely, if our observed variables are measured with error, the associations between them, i.e., the structural parameters and main effects of substantive interest will be biased. TAKE FROM RE-FE PAPER. 
-
 
 \clearpage
 

@@ -92,7 +92,7 @@ y & = \beta_{1}x_{1} + \beta_{2}x_{2} + \epsilon
 where we assume: 
 
 - linearity: the effects of the independent variables are constant and additive
-- random sampling: ensures $\E(\epsilon_{i}\epsilon_{j}) = 0, \ i \ne j$, i.e., the error of one unit tells us nothing about another unit's errors on average
+- no autocorrelation: $\E(\epsilon_{i}\epsilon_{j}) = 0, \ i \ne j$, i.e., the error of one unit tells us nothing about another unit's errors on average, ensured by random sampling
 - no perfect multicollinearity: the independent variables are not linear combinations of each other and are not constants
 - zero conditional mean: the covariates are mean independent and thus also uncorrelated with the error, $\E(\epsilon | x_{1}, x_{2}) = \E(\epsilon) = 0$
 - homoskedasticity: constant variance of the error, $\Var(\epsilon | x_{1}, x_{2}) = \Var(\epsilon) = \sigma^{2}_{\epsilon}$
@@ -685,6 +685,8 @@ nr_func(0.996)
 
 which, we can see *converges* to the value we know to be correct based on the algebraic solution, i.e., $\hat{\psi} = 1$. SEM software set the break-off point in terms of the change in subsequent estimates. Moving from the first to the second iteration, the change was $0.834 - 0.667 = `r 0.834 - 0.667`$, from the second to the third it was $0.953 - 0.834 = `r 0.953 - 0.834`$, from the third to the fourth just $0.996 - 0.953 = `r 0.996 - 0.953`$ and from the fourth to the fifth $1 - 0.996 = `r 1 - 0.996`$. In the move from the second last to the last iteration shown here, we see basically no further improvement and we would stop the search. 
 
+The Newton-Raphson algorithm may seem abstract. See the Notes on Numerical Methods for more details. 
+
 ## Maximum likelihood 
 
 Maximum likelihood is by far the most popular estimator used in SEM. One criticism you might have heard of ML is that it requires that the model variables are normally distributed. In this section, I will describe on a basic level why the assumption of normality is so important for SEM (compared to, say, OLS which also tends to assume normality but with a different motivation), what it pertains to and how one can treat the assumption in practice.
@@ -911,25 +913,10 @@ The ALLBUS 2018 file we will be using is an SPSS (`.sav`) file and we will use t
 library(haven)
 
 # Set working directory - change to your directory 
-setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data") 
+setwd("../04_data") 
 
 # Import ALLBUS 2018 
-# df <- read_sav("allbus_2018_small.sav")
-df <- read_sav("ZA5270_v2-0-0.sav")
-```
-
-```{r echo=FALSE}
-# Recode pa30 to match px06
-df$pa30r <- abs(df$pa30 - 6)
-
-# Re-label pa30 
-df$pa30r <- labelled(df$pa30r,
-                     labels = c("LEHNE VOLL UND GANZ AB" = 1,
-                                "LEHNE EHER AB" = 2,
-                                "TEILS/TEILS" = 3,
-                                "STIMME EHER ZU" = 4,
-                                "STIMME VOLL UND GANZ ZU" = 5),
-                     label = "POLITIKER REDEN ZU VIEL, HANDELN ZU WENIG (REKODIERT)")
+df <- read_sav("allbus2018.sav")
 ```
 
 To use `lavaan`, we create an `R` object using the assignment operator `<-`, see the model syntax example below. Here, the object has been called `rm1` for 'regression model 1'. The object can be named anything that complies with naming conventions in `R` (e.g., the object name must start with a letter or dot, underscores and dots can be used to separate words, etc.). The model syntax is enclosed in quotes, either single `''` or double `""`. This means that the model syntax is essentially a string that the `lavaan` package interprets in a second step. Once the model has been specified, we use the `sem()` function to 'fit' or 'estimate' the model. Notice a second object is made out of the fitted `lavaan` object. Here the fitted `lavaan` object has been named `rm1.fit`. 

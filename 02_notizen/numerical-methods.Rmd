@@ -15,7 +15,7 @@ Say we had the function
 f(x) & = 2x^{2} + 6x - 8.
 \end{align}
 
-It is shown in Figure \ref{fig:fx}
+which is shown in Figure \ref{fig:fx}.
 
 ```{r fig.align="center", fig.cap="\\label{fig:fx}$f(x) = 2x^2 + 6x - 8$", warning=FALSE, message=FALSE}
 library(latex2exp)

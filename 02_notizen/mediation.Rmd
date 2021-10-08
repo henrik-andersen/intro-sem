@@ -113,7 +113,7 @@ Note that, for the sake of clarity, we change $\epsilon$ from the first model to
 
 With mediation analyses, sometimes call *path analysis*, we are usually interested in looking at *indirect effects*, where we decompose some bivariate association into the direct partial effect(s) and the indirect effect(s) that run over the mediator. 
 
-Specifically, with such a mediation analysis, we are interested in whether higher social class lowers xenophobia *because* higher social class lowers populist sentiment, and populist sentiment is what drives xenophobia. If this is the case, then we call populism a mediator of the effect of class on xenophobia. It could be the case that, after controlling for populism, so to speak, class has no further effect on xenophobia, i.e., those of higher or lower social class do not differ in terms of xenophobia, on average. Then we would say that we have identified the *mechanism* for the observed correlation between class and xenophobia. 
+Specifically, with such a mediation analysis, we are interested in whether higher social class lowers xenophobia *because* higher social class lowers populist sentiment, and populist sentiment is what drives xenophobia. If this is the case, then we call populism a mediator of the effect of class on xenophobia. It could be the case that, after controlling for populism, so to speak, class has no further effect on xenophobia, i.e., those of higher or lower social class do not differ in terms of xenophobia, on average. Then we would say that we have identified a *mechanism* for the observed correlation between class and xenophobia. 
 
 Stated more generally, we want to know whether the observed bivariate effect runs entirely over the mediator, or if there remains a *direct effect* after controlling for the other variable. We also usually are interested in whether the *indirect effect* is significant or not, which we use to test the hypothesis that some variable is indeed a mediator. Formally, if we call the independent variable $x$, the mediatior $m$ and the dependent variable $y$, then the steps involved in a mediation analysis are usually: 
 
@@ -139,23 +139,10 @@ library(haven)
 library(lavaan)
 
 # Set working directory 
-setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+setwd("../04_data")
 
 # Import ALLBUS 2018 
-# df <- read_sav("allbus_2018_small.sav")
-df <- read_sav("ZA5270_v2-0-0.sav")
-
-# Recode pa30 to match px06
-df$pa30r <- abs(df$pa30 - 6)
-
-# Re-label pa30 
-df$pa30r <- labelled(df$pa30r,
-                     labels = c("LEHNE VOLL UND GANZ AB" = 1,
-                                "LEHNE EHER AB" = 2,
-                                "TEILS/TEILS" = 3,
-                                "STIMME EHER ZU" = 4,
-                                "STIMME VOLL UND GANZ ZU" = 5),
-                     label = "POLITIKER REDEN ZU VIEL, HANDELN ZU WENIG (REKODIERT)")
+df <- read_sav("allbus2018.sav")
 
 # Bivariate regression model 
 rm1 <- '
@@ -354,7 +341,7 @@ We can use `lavInspect()` where we supply the fitted model, along with the argum
 lavInspect(mm1.fit, "list")
 ```
 
-We use `[,]`, or indexing, to refer to specific rows and columns of this table. For example, the effect `gamma2` is found in second column and the estimate is in column 14:
+We use `[,]`, or indexing, to refer to specific rows and columns of this table. For example, the effect `gamma2` is found in second row and the estimate is in column 14:
 
 ```{r}
 gamma2 <- lavInspect(mm1.fit, "list")[2, 14]; gamma2
@@ -438,7 +425,7 @@ which is the same as the mediation model,
 
 since we said above that $\Cov(x_{2}, x_{1}) = \gamma_{2}\Var(x_{1})$. 
 
-So, what is the advantage of mediation models if multivariate regression achieves the exact same thing? There are several. First, if we begin to look at larger chains of effects, e.g., $x \rightarrow w \rightarrow z \rightarrow y$, then the equivalence breaks down, because the multivariate model is much more general, allowing each covariate to affect the dependent variable while controlling for the covariance between the covariates, while the mediation model places strong restrictions on the model, i.e., that the only effect of, say, $x$ on $y$ is the mediated path over $w$ and $z$ and there are no effects over and above this. 
+So, what is the advantage of mediation models if multivariate regression achieves the exact same thing? For one, if we begin to look at larger chains of effects, e.g., $x \rightarrow w \rightarrow z \rightarrow y$, then the equivalence breaks down, because the multivariate model is much more general, allowing each covariate to affect the dependent variable while controlling for the covariance between the covariates, while the mediation model places strong restrictions on the model, i.e., that the only effect of, say, $x$ on $y$ is the mediated path over $w$ and $z$ and there are no effects over and above this. 
 
 # Likelihood ratio test 
 
@@ -545,7 +532,7 @@ y & = \beta_{1}x + \epsilon \\
 
 where we have simply defined $\beta_{0}^{*} = \E(\epsilon)$ and $\epsilon^{*} = \epsilon - \E(\epsilon)$, so that the intercept 'absorbs' the expectation of the error and the expectation itself is mean-centered to have a mean of zero. We just omit the stars and state that the error has an unconditional expectation of zero. 
 
-In our mediation model, we can bring the means in, as well. We usually avoid the notation $\beta_{0}$ because we want to save the subscript in order to reference the dependent variable, so we can use $\tau_{1}, \tau_{2}$, etc. 
+In our mediation model, we can bring the means in, as well. We usually avoid the notation $\beta_{0}$, so we can use $\tau_{1}, \tau_{2}$, etc. 
 \begin{align}
 y_{1} & = \tau_{1} + \beta_{1}y_{1} + \gamma_{1}x_{1} + \zeta_{1} \\
 y_{2} & = \tau_{2} + \gamma_{2}x_{1} + \zeta_{2}
@@ -595,6 +582,8 @@ x_{1} & = \tau_{x_{1}} + \delta_{1}
 
 where $\E(\delta_{1}) = 0$. In other words, we say that an exogenous variable can be expressed in terms of the unconditional mean^[The unconditional mean for $x_{1}$ is $\E(x_{1}) = \tau_{x_{1}} + \E(\delta_{1}) = \tau_{x_{1}}$.] and the deviations around that mean. 
 
+However, *mentioning any exogenous covariate on the left hand side of any equation turns it into an endogenous variable*. This means the mean and variance of the exogenous variable are no longer fixed to the sample statistics and are instead estimated, which means all assumptions --- notably the assumption of normality --- apply. 
+
 There is a shortcut for 'turning on' the mean structure in `lavaan`. Instead of regressing the endogenous and exogenous variables on a constant, we can leave the syntax and simply add `meanstructure = TRUE` to the fitting function: 
 
 ```{r}
@@ -609,6 +598,8 @@ In other words, the sample statistics we base our model on now consist of the me
 \bm{o} = \begin{bmatrix} \bar{y}_{1} \\ \bar{y}_{2} \\ \bar{x}_{1} \end{bmatrix}, & \ 
 \bm{S} = \begin{bmatrix} \var(y_{1}) & & \\ \cov(y_{2}, y_{1}) & \var(y_{2}) & \\ \cov(x_{1}, y_{1}) & \cov(x_{1}, y_{2}) & \var(x_{1}) \end{bmatrix}.
 \end{align}
+
+Notice, as well, that the exogenous covariates remain exogenous with the `meanstructure = TRUE` shortcut.
 
 In path diagrams, we sometimes show the mean structure with a 1 enclosed in a triangle pointing to the variables for which a mean/intercept is being estimated, as shown in Figure \ref{fig:path-mean}.
 
