@@ -1,0 +1,878 @@
+---
+title: "Introduction to Structural Equation Modeling: The General Model"
+author: "Henrik Kenneth Andersen"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output: pdf_document
+header-includes:
+   - \usepackage{booktabs}
+   - \usepackage{tikz}
+   - \usetikzlibrary{positioning}
+   - \usetikzlibrary{calc}
+   - \usepackage{mathtools}
+   - \usepackage{amsfonts}
+   - \mathtoolsset{showonlyrefs}
+   - \usepackage{subfig}
+   - \usepackage{bm}
+   - \DeclareMathOperator{\E}{\mathbb{E}}
+   - \DeclareMathOperator{\Var}{\mathrm{Var}}
+   - \DeclareMathOperator{\Cov}{\mathrm{Cov}}
+   - \DeclareMathOperator{\var}{\mathrm{var}}
+   - \DeclareMathOperator{\cov}{\mathrm{cov}}
+   - \DeclareMathOperator{\Cor}{\mathrm{Cor}}
+   - \DeclareMathOperator{\sd}{\mathrm{sd}}
+link-citations: yes
+linkcolor: blue
+bibliography: "../references.bib"
+--- 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Script hooks for chunk outputs
+source("../scripthooks.R")
+```
+
+# Introduction 
+
+The 'General' or 'Full' SEM combines regression and/or mediation with confirmatory factor analysis to model the 'structural' relations between the latent variables. 
+
+# Measurement error and attenuation bias 
+
+What if the observed variables are not measured perfectly? Then what we observe, call them $\tilde{x}$ and $\tilde{y}$ are composites of the true score we are after, i.e., $x$ and $y$, plus an additive measurement error portion:
+\begin{align}
+\tilde{x} & = x + \upsilon, \\
+\tilde{y} & = y + \nu.
+\end{align}
+
+How does this affect our model? Well, first notice that measurement error in the dependent variable is typically less of a serious problem than measurement error in the independent variables. Let us assume mean-centered variables so that we can ignore the intercept, and consider the following simple bivariate equation:
+\begin{align}
+y & = \beta x + \varepsilon
+\end{align}
+if $y$ is measured imperfectly and what we observe is $\tilde{y} = y + \nu$, then we can rewrite the equation as: 
+\begin{align}
+(\tilde{y} - \nu) & = \beta x + \varepsilon \\
+\tilde{y} & = \beta x + \varepsilon + \nu.
+\end{align}
+The measurement error in $y$ just gets added to the regression error. As long as $\nu$ is uncorrelated with $x$, then the regression coefficient will be unbiased [@Pischke2007; @Wooldridge2009]. However, this will increase the error variance and thus make the estimates less precise, i.e., higher standard error, lower $R^{2}$. 
+
+We will look at the effect of measurement error in the dependent variable using an example shortly. For now though, let us be safe in the knowledge that the coefficient of interest is likely unbiased, and concentrate on the more serious problem of error in the independent variable. 
+
+The intuition behind the problem of measurement error in the independent variable(s) can be explained as follows. Take $\tilde{x} = x + \upsilon$ and substitute this into the equation for $y$: 
+\begin{align}
+y & = \beta x + \varepsilon \\
+ & = \beta(\tilde{x} - \upsilon) + \varepsilon \\
+ & = \beta\tilde{x} + (\varepsilon - \beta\upsilon).
+\end{align}
+Since $\tilde{x}$ is obviously correlated with $\upsilon$ (unless the variance of $\upsilon$ is so small so that the correlation is essentially negligible), then the composite error in this regression is also correlated with the independent variable and thus the estimated coefficient of $\beta$ will be biased. 
+
+## Simulated examples
+
+Let us simulate some data to demonstrate the problem of measurement error and attenuation bias. We need to use simulation because we generally do not know with observed variables whether they are measured with error and what portion of their variance is due to it. 
+
+```{r message=FALSE, warning=FALSE}
+library(lavaan)
+
+# Set seed for replicability
+set.seed(1234)
+
+# Set large sample size to minimize sampling error
+n <- 10000
+# Set population effect
+beta <- 0.5
+
+# Make the independent variable
+x <- rnorm(n = n, mean = 0, sd = 1)
+# Dependent variable 
+y <- beta * x + rnorm(n = n, mean = 0, sd = 1)
+
+# Put together into dataframe
+df <- data.frame(x, y)
+
+# Run the simple lin. reg. model in SEM
+m1 <- '
+y ~ beta*x
+x ~~ phi*x
+y ~~ psi*y
+'
+m1.fit <- sem(model = m1, data = df)
+summary(m1.fit)
+```
+
+From this, we see that the properly specified model returns a consistent and unbiased estimate of the effect with $\hat{\beta} = 0.511^{***} \ (0.010)$. 
+
+But now if we add error to $x$ that is independent of $y$, the model including the predictor measured with error does not perform well, at all. 
+
+```{r}
+# Now add measurement error to x 
+xtilde <- x + rnorm(n = n, mean = 0, sd = 1)
+
+# Add xtilde to dataframe
+df <- data.frame(x, y, xtilde)
+
+# Re-run the model with measurement error sullied independent variable
+m2 <- '
+y ~ beta*xtilde
+xtilde ~~ phi*xtilde
+y ~~ psi*y
+'
+m2.fit <- sem(model = m2, data = df)
+summary(m2.fit)
+```
+
+Here, the effect is downward biased to a substantial degree, with $\hat{\beta}^{M2} = 0.252^{***} \ (0.008)$. This is because the measurement error in the predictor gets relegated to the error, which violates the assumption that the error is uncorrelated with the predictor. 
+
+Recall that we said measurement error in the dependent variable is less serious, because it will not bias estimates but will make them less precise. To demonstrate this, let us return to the first model where the independent variable is measured without error, but let us increase the unexplained variance in $y$ (it already had an error variance, let us just make it bigger). We could imagine that our instrument was not very reliable and the amount of random error was increased. 
+
+```{r}
+# Increase the error variance in y 
+ytilde <- y + rnorm(n = n, mean = 0, sd = 3)
+
+# Put ytilde into the dataframe
+df <- data.frame(x, y, xtilde, ytilde)
+
+# Re-run the model with measurement error sullied dependent variable
+m3 <- '
+ytilde ~ beta*x
+x ~~ phi*x
+ytilde ~~ psi*ytilde
+'
+m3.fit <- sem(model = m3, data = df)
+summary(m3.fit)
+```
+
+The regression coefficient is not identical to `m1.fit` simply due to sampling error, but the coefficient is still unbiased and consistent. However, the standard error has increased from $0.010$ in `m1.fit` to $0.032$ in `m3.fit`. 
+
+We can also look at the $R^{2}$ statistics using `lavInspect(model, "r2")`. In the first model, we were able to explain roughly 20% of the variance in $y$ with the predictor $x$. 
+
+```{r}
+# R^2 for m1.fit
+lavInspect(m1.fit, "r2")
+```
+
+Now, let us look at the model in which the dependent variable was less accurately measured: 
+
+```{r}
+# R^2 for m3.fit
+lavInspect(m3.fit, "r2")
+```
+
+In model 3, even though the model is specified correctly and the coefficient is unbiased and consistent, we are no only able to explain about 2.5% of the variance of $y$. 
+
+For these reasons, measurement error in both the independent and dependent variables should be avoided if possible. SEM provides a framework for dealing with it. 
+
+## Multiple indicator measurement models
+
+We can think of the classical test theory equations above, i.e., observed score = true score + error in terms of latent variables. We say the 'true score' we are after is the score on the underlying latent variable, which is unobservable. The latent variable 'causes' the observed scores to some extent, but there is some amount of error that makes it so the observed score does not exactly equal the true score. 
+
+Let us say that we had multiple indicators that are meant to measure the same construct, e.g., an established measurement scale for some attitudinal or psychological construct. Then, just like in the CFA case, we would define so-called measurement models that express the observed variable in terms of the unobserved construct of interest and some error
+\begin{align}
+x_{k} & = \lambda^{x}_{k}\xi + \delta_{k} \\
+y_{k} & = \lambda^{y}_{k}\eta + \epsilon_{k}
+\end{align}
+
+where $k = 1, \ldots, K$. These equations say that the observed indicators, $x_{k}, y_{k}$ are the result of the actual construct we are trying to measure, $\xi, \eta$, linked by factor loadings representing the extent to which the observed variable is influenced by the latent construct and some measurement error, $\delta_{k}, \epsilon_{k}$. This is exactly what we were doing in the CFA section, explaining the observed variable in terms of the latent variables and decomposing their variance into 'valid' and 'error' variance portions. 
+
+Once we have decomposed the variables, we set the structural relations between the measurement-error-free latent variables, with the assumption that the measurement error is independent of those latent variables. 
+
+Let us continue with the simulated example, because it should be very transparent that when our assumptions hold and we have good measures of the underlying latent construct, that we can avoid attenuation bias. Let us simulate three indicators for each the underlying latent exogenous and endogenous variables. 
+
+```{r output.lines=20:23}
+# Set seed for replicability
+set.seed(987)
+
+# Set large sample size to minimize sampling error
+n <- 10000
+
+# 'True' coefficient is 0.5
+gamma <- 0.5
+
+# Latent exogenous construct
+xi <- rnorm(n = n, mean = 0, sd = 1)
+# Latent endogenous construct
+eta <- gamma * xi + rnorm(n = n, mean = 0, sd = 1)
+
+# Measurements with error
+x1 <- 0.8 * xi + rnorm(n = n, mean = 0, sd = 1)
+x2 <- 0.7 * xi + rnorm(n = n, mean = 0, sd = 1)
+x3 <- 0.9 * xi + rnorm(n = n, mean = 0, sd = 1)
+y1 <- 0.7 * eta + rnorm(n = n, mean = 0, sd = 1)
+y2 <- 0.7 * eta + rnorm(n = n, mean = 0, sd = 1)
+y3 <- 0.8 * eta + rnorm(n = n, mean = 0, sd = 1)
+
+# Dataframe of latent variables
+dflat <- data.frame(xi, eta)
+# Dataframe of observed variables
+dfobs <- data.frame(x1, x2, x3, y1, y2, y3)
+
+# 'Baseline' model (mbl)
+mbl <- '
+# Regression between true underlying variables
+  eta ~ gamma*xi
+# Variances
+  xi  ~~ phi*xi
+  eta ~~ psi*eta
+'
+mbl.fit <- sem(model = mbl, data = dflat)
+summary(mbl.fit)
+```
+
+```{r output.lines=20:23}
+# 'Observed' model with one indicator per underlying construct
+# Essentially assumption that error variance = 0 is wrong
+mobs <- '
+# Regression between observed indicators
+  y1 ~ gamma*x1
+# Variances
+  x1 ~~ phi*x1
+  y1 ~~ psi*y1
+'
+mobs.fit <- sem(model = mobs, data = dfobs)
+summary(mobs.fit)
+```
+
+```{r output.lines=33:36}
+# 'Error corrected' model (mec) with multiple indicator measurement models
+mec <- '
+# Measurement models
+  xi1  =~ 1*x1 + l2*x2 + l3*x3
+  eta1 =~ 1*y1 + l2*y2 + l3*y3
+# Regression at latent variable-level
+  eta1 ~ gamma*xi1
+# Variances
+  xi1  ~~ phi*xi1
+  eta1 ~~ psi*eta1
+# Measurement error
+  x1 ~~ d1*x1
+  x2 ~~ d2*x2
+  x3 ~~ d3*x3
+  y1 ~~ e1*y1
+  y2 ~~ e2*y2
+  y3 ~~ e3*y3
+'
+mec.fit <- sem(model = mec, data = dfobs)
+summary(mec.fit)
+```
+
+Obviously, the model that corrects for measurement error gets much closer to the true effect of $\gamma = 0.5$.
+
+Note, however, that the ability for SEMs to correct for measurement error depends on the quality of the measurements. We can imagine a scenario in which the indicators are measured with minimal error. Then, the results of the SEM regression should closely match the hypothetical regression between the true underlying constructs. The poorer the measurement model, the less capable the model will be of identifying the true effect. 
+
+Take the following example, in which the factor loadings are all uniformly poor. 
+
+```{r output.lines=33:36}
+# --- Same model, but lower factor loadings
+x1 <- 0.2 * xi + rnorm(n = n, mean = 0, sd = 1)
+x2 <- 0.2 * xi + rnorm(n = n, mean = 0, sd = 1)
+x3 <- 0.2 * xi + rnorm(n = n, mean = 0, sd = 1)
+y1 <- 0.2 * eta + rnorm(n = n, mean = 0, sd = 1)
+y2 <- 0.2 * eta + rnorm(n = n, mean = 0, sd = 1)
+y3 <- 0.2 * eta + rnorm(n = n, mean = 0, sd = 1)
+
+dfobs <- data.frame(x1, x2, x3, y1, y2, y3)
+
+mec <- '
+# Measurement models
+  xi1  =~ 1*x1 + l2*x2 + l3*x3
+  eta1 =~ 1*y1 + l2*y2 + l3*y3
+# Regression at latent variable-level
+  eta1 ~ gamma*xi1
+# Variances
+  xi1  ~~ phi*xi1
+  eta1 ~~ psi*eta1
+# Measurement error
+  x1 ~~ d1*x1
+  x2 ~~ d2*x2
+  x3 ~~ d3*x3
+  y1 ~~ e1*y1
+  y2 ~~ e2*y2
+  y3 ~~ e3*y3
+'
+mec.fit <- sem(model = mec, data = dfobs)
+summary(mec.fit)
+```
+
+Weak factor loadings, which signify low inter-item correlations, actually produces an *overcorrection* in which the regression coefficient(s) become inflated. Here, the estimated effect is much higher than the true effect of 0.5. For this reason, the full SEM requires that the measurement models are sound, where we would ideally have all factor loadings > 0.7 or so. 
+
+Another scenario arises when the error variances is very large. Obviously, even if the factor loadings are sound, if the amount of 'noise' in the measures is too large, we will not be able to recognize the systemic covariation as well. This will lead to downward biased estimates and low levels of explained variance as shown in the fictitious example below. 
+
+```{r output.lines=33:36}
+# --- Same model, but larger error variances
+
+x1 <- 0.8 * xi + rnorm(n = n, mean = 0, sd = 10)
+x2 <- 0.7 * xi + rnorm(n = n, mean = 0, sd = 10)
+x3 <- 0.9 * xi + rnorm(n = n, mean = 0, sd = 10)
+y1 <- 0.7 * eta + rnorm(n = n, mean = 0, sd = 10)
+y2 <- 0.7 * eta + rnorm(n = n, mean = 0, sd = 10)
+y3 <- 0.8 * eta + rnorm(n = n, mean = 0, sd = 10)
+
+dfobs <- data.frame(x1, x2, x3, y1, y2, y3)
+
+mec <- '
+# Measurement models
+  xi1  =~ 1*x1 + l2*x2 + l3*x3
+  eta1 =~ 1*y1 + l2*y2 + l3*y3
+# Regression at latent variable-level
+  eta1 ~ gamma*xi1
+# Variances
+  xi1  ~~ phi*xi1
+  eta1 ~~ psi*eta1
+# Measurement error
+  x1 ~~ d1*x1
+  x2 ~~ d2*x2
+  x3 ~~ d3*x3
+  y1 ~~ e1*y1
+  y2 ~~ e2*y2
+  y3 ~~ e3*y3
+'
+mec.fit <- sem(model = mec, data = dfobs)
+summary(mec.fit)
+```
+
+# Notation and path diagrams 
+
+There exists a formalized structure for constructing the model equations in the form of a *structural model*
+\begin{align}
+\bm{\eta} & = \bm{B}\bm{\eta} + \bm{\Gamma}\bm{\xi} + \bm{\zeta} 
+\end{align}
+
+where $\bm{\eta}$ is a vector of all the dependent or *endogenous* latent variables and $\bm{\xi}$ is a vector of the independent or *exogenous* latent variables, $\bm{B}$ is a matrix of regression coefficients linking endogenous latent variables (think of a mediation model with a latent mediator) and $\bm{\Gamma}$ are the regression coefficients linking the endogenous to the exogenous latent variables. Finally, $\bm{\zeta}$ are the errors or *disturbances* of the endogenous latent variables. 
+
+Now, the latent variables are not observed, so we have to infer them from their observed measures. This is described in the *measurement models*
+\begin{align}
+\bm{y} & = \bm{\Lambda}_{y} \bm{\eta} + \bm{\epsilon}, \\
+\bm{x} & = \bm{\Lambda}_{x} \bm{\xi} + \bm{\delta}
+\end{align}
+
+where $\bm{y}$ and $\bm{x}$ are vectors of the observed dependent and independent variables, respectively. These are linked to the latent variables by *factor loadings* contained in the matrices $\bm{\Lambda}_{y}$ and $\bm{\Lambda}_{x}$. The *measurement error*, i.e., the part of the observed variables not explained by the latent variables, is $\bm{\epsilon}$ and $\bm{\delta}$. 
+
+Take a simple model with two latent variables, one exogenous $\bm{\xi} = (\xi)$, one endogenous $\bm{\eta} = (\eta)$, each measured by three observed variables, $\bm{x} = (x_{1}, x_{2}, x_{3})^{\intercal}$, $\bm{y} = (y_{1}, y_{2}, y_{3})^{\intercal}$. Then we would write the structural model as
+\begin{align}
+\bm{\eta} & = \bm{B}\bm{\eta} + \bm{\Gamma}\bm{\xi} + \bm{\zeta} \\
+\eta & = \gamma \xi + \zeta
+\end{align}
+
+and the measurement models as 
+\begin{align}
+\bm{y} & = \bm{\Lambda}_{y}\bm{\eta} + \bm{\epsilon} \\
+\begin{bmatrix}
+y_{1} \\ y_{2} \\ y_{3} 
+\end{bmatrix} & = 
+\begin{bmatrix}
+\lambda_{y_{1}} \\ \lambda_{y_{2}} \\ \lambda_{y_{3}}
+\end{bmatrix}
+\eta + 
+\begin{bmatrix}
+\epsilon_{1} \\ \epsilon_{2} \\ \epsilon_{3}
+\end{bmatrix}, \\
+\bm{x} & = \bm{\Lambda}_{x}\bm{\xi} + \bm{\delta} \\
+\begin{bmatrix}
+x_{1} \\ x_{2} \\ x_{3} 
+\end{bmatrix} & = 
+\begin{bmatrix}
+\lambda_{x_{1}} \\ \lambda_{x_{2}} \\ \lambda_{x_{3}}
+\end{bmatrix}
+\xi + 
+\begin{bmatrix}
+\delta_{1} \\ \delta_{2} \\ \delta_{3}
+\end{bmatrix}.
+\end{align}
+
+We would typically state further our assumptions about the models, i.e., that the errors and disturbances are mean independent or at least uncorrelated with the predictors, i.e., $\E(\zeta | \xi) = \E(\zeta)$, or $\Cov(\zeta, \xi) = 0$, and that the unexplained parts of the observed variables, the measurement error, are mutually unrelated, e.g., $\Cov(\epsilon_{1},\epsilon_{2}) = \Cov(\epsilon_{1},\epsilon_{3}) = \Cov(\epsilon_{2},\epsilon_{3}) = \Cov(\delta_{1},\delta_{2}) = \Cov(\delta_{1},\delta_{3}) = \Cov(\delta_{2}, \delta_{3}) = 0$. 
+
+We can again use *path diagrams* to succinctly describe the relations and assumptions of our model. 
+
+\begin{figure}
+\centering
+\caption{Example path diagram}
+\label{fig:fullsem}
+\begin{tikzpicture}[node distance={15mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[lat] (xi) {$\xi$};
+\node[lat] (eta) [right =45mm of xi] {$\eta$};
+\node[err] (zeta) [above right of=eta] {$\zeta$};
+\node[man] (x2) [below of=xi] {$x_{2}$};
+\node[man] (x1) [left of=x2] {$x_{1}$};
+\node[man] (x3) [right of=x2] {$x_{3}$};
+\node[man] (y2) [below of=eta] {$y_{2}$};
+\node[man] (y1) [left of=y2] {$y_{1}$};
+\node[man] (y3) [right of=y2] {$y_{3}$};
+\node[err] (e1) [below =5mm of y1] {$\epsilon_{1}$};
+\node[err] (e2) [below =5mm of y2] {$\epsilon_{2}$};
+\node[err] (e3) [below =5mm of y3] {$\epsilon_{3}$};
+\node[err] (d1) [below =5mm of x1] {$\delta_{1}$};
+\node[err] (d2) [below =5mm of x2] {$\delta_{2}$};
+\node[err] (d3) [below =5mm of x3] {$\delta_{3}$};
+\draw[->] (xi) -- node[midway, above] {$\gamma$} (eta);
+\draw[->] (zeta) -- node[midway, above] {} (eta);
+\draw[->] (xi) -- node[midway, left] {$\lambda_{x_{1}}$} (x1);
+\draw[->] (xi) -- node[midway, right] {$\lambda_{x_{2}}$} (x2);
+\draw[->] (xi) -- node[midway, right] {$\lambda_{x_{3}}$} (x3);
+\draw[->] (eta) -- node[midway, left] {$\lambda_{y_{1}}$} (y1);
+\draw[->] (eta) -- node[midway, right] {$\lambda_{y_{2}}$} (y2);
+\draw[->] (eta) -- node[midway, right] {$\lambda_{y_{3}}$} (y3);
+\draw[->] (d1) -- node[midway] {} (x1);
+\draw[->] (d2) -- node[midway] {} (x2);
+\draw[->] (d3) -- node[midway] {} (x3);
+\draw[->] (e1) -- node[midway] {} (y1);
+\draw[->] (e2) -- node[midway] {} (y2);
+\draw[->] (e3) -- node[midway] {} (y3);
+\draw[<->] (d1.-90) arc (0:-264:3.5mm);
+\draw[<->] (d2.-90) arc (0:-264:3.5mm);
+\draw[<->] (d3.-90) arc (0:-264:3.5mm);
+\draw[<->] (e1.-90) arc (0:-264:3.5mm);
+\draw[<->] (e2.-90) arc (0:-264:3.5mm);
+\draw[<->] (e3.-90) arc (0:-264:3.5mm);
+\draw[<->] (zeta.90) arc (0:264:3.5mm);
+\end{tikzpicture}
+\end{figure}
+
+## Model-implied covariance matrix 
+
+Once we have specified the model using the typical SEM notation, we can derive the model-implied covariance matrix. This means working with matrices and vectors, so the algebra may be difficult for some to follow. Essentially, with mean-centered variables, we can say the covariance matrix of the observed endogenous variables, call it $\bm{\Sigma}_{yy}(\bm{\theta})$, is $\E(\bm{y}\bm{y}^{\intercal})$ where $^{\intercal}$ is the transpose operator, changing, say, a $p \times 1$ vector into a $1 \times p$ vector.^[An imprtant property of transposing is if we have $(\bm{u}\bm{v})$, then the transpose is $(\bm{u}\bm{v})^{\intercal} = (\bm{v}^{\intercal}\bm{u}^{\intercal})$.] So, we express the variance of $\bm{y}$ in terms of the model,
+\begin{align}
+\bm{\Sigma}_{yy}(\bm{\theta})  & = \E(\bm{y}\bm{y}^{\intercal}) \\
+ & = \E[(\bm{\Lambda}_{y}\bm{\eta} + \bm{\epsilon})(\bm{\Lambda}_{y}\bm{\eta} + \bm{\epsilon})^{\intercal}] \\
+ & = \E[(\bm{\Lambda}_{y}\bm{\eta} + \bm{\epsilon})(\bm{\eta}^{\intercal}\bm{\Lambda}^{\intercal}_{y} + \bm{\epsilon}^{\intercal})] \\
+ &  = \E(\bm{\Lambda}_{y}\bm{\eta}\bm{\eta}^{\intercal}\bm{\Lambda}_{y}^{\intercal} + \bm{\Lambda}_{y}\bm{\eta}\bm{\epsilon}^{\intercal} + \bm{\epsilon}\bm{\Lambda}_{y}^{\intercal}\bm{\eta}^{\intercal} + \bm{\epsilon}\bm{\epsilon}^{\intercal})
+\end{align}
+
+where $\E(\bm{\eta}\bm{\epsilon}) = \Cov(\bm{\eta},\bm{\epsilon}) = \bm{0}$, by assumption, so
+\begin{align}
+\bm{\Sigma}_{yy}(\bm{\theta}) & = \E(\bm{\Lambda}_{y}\bm{\eta}\bm{\eta}^{\intercal}\bm{\Lambda}_{y}^{\intercal} + \bm{\epsilon}\bm{\epsilon}^{\intercal}) \\
+ & = \bm{\Lambda}_{y}\E(\bm{\eta}\bm{\eta}^{\intercal}) \bm{\Lambda}_{y}^{\intercal} + \E(\bm{\epsilon}\bm{\epsilon}^{\intercal})
+\end{align}
+
+We call $\E(\bm{\epsilon}\bm{\epsilon}^{\intercal}) = \bm{\Theta}_{\epsilon}$, the covariance matrix of the the measurement errors for $\bm{y}$. As per our assumption (noted above and reflected in the path diagram), this matrix will have the variances of the measurement errors on the diagonal and zeros everywhere else, implying the measurement errors are uncorrelated with each other (the error of one indicator does not tell us anything about the error of another indicator). 
+
+Further, we can expand on $\E(\bm{\eta}\bm{\eta}^{\intercal})$ by putting $\bm{\eta}$ in reduced form
+\begin{align}
+\bm{\eta} & = \bm{B}\bm{\eta} + \bm{\Gamma}\bm{\xi} + \bm{\zeta} \\
+\bm{\eta} - \bm{B}\bm{\eta} & = \bm{\Gamma}\bm{\xi} + \bm{\zeta} \\
+\bm{\eta}(\bm{I} - \bm{B}) & = \bm{\Gamma}\bm{\xi} + \bm{\zeta} \\
+(\bm{I} - \bm{B})^{-1}\bm{\eta}(\bm{I} - \bm{B}) & = (\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\xi} + \bm{\zeta}) \\
+\bm{\eta} & = (\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\xi} + \bm{\zeta})
+\end{align}
+
+which we substitute back into $\E(\bm{\eta}\bm{\eta}^{\intercal})$
+\begin{align}
+\bm{\Sigma}_{yy}(\bm{\theta}) & =  \bm{\Lambda}_{y}\E(\bm{\eta}\bm{\eta}^{\intercal}) \bm{\Lambda}_{y}^{\intercal} + \bm{\Theta}_{\epsilon} \\
+ & = \bm{\Lambda}_{y}\E[((\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\xi} + \bm{\zeta}))((\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\xi} + \bm{\zeta}))^{\intercal})] \bm{\Lambda}_{y}^{\intercal} + \bm{\Theta}_{\epsilon} \\
+ & = \bm{\Lambda}_{y}\E[((\bm{I} - \bm{B})^{-1}\bm{\Gamma}\bm{\xi} + (\bm{I} - \bm{B})^{-1}\bm{\zeta})(\bm{\xi}^{\intercal}\bm{\Gamma}^{\intercal}(\bm{I} - \bm{B})^{-1\intercal} + \bm{\zeta}^{\intercal}(\bm{I} - \bm{B})^{-1\intercal})] + \bm{\Lambda}_{y}^{\intercal} + \bm{\Theta}_{\epsilon} \\
+ & = \bm{\Lambda}_{y}\E[(\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\xi}\bm{\xi}^{\intercal}\bm{\Gamma}^{\intercal} + \bm{\zeta}\bm{\zeta}^{\intercal})(\bm{I} - \bm{B})^{-1\intercal}]\bm{\Lambda}_{y}^{\intercal} + \bm{\Theta}_{\epsilon} \\
+ & = \bm{\Lambda}_{y}(\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\E(\bm{\xi}\bm{\xi}^{\intercal})\bm{\Gamma}^{\intercal} + \E(\bm{\zeta}\bm{\zeta}^{\intercal}))(\bm{I} - \bm{B})^{-1\intercal}\bm{\Lambda}_{y}^{\intercal} + \bm{\Theta}_{\epsilon} \\
+ & = \bm{\Lambda}_{y}(\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\Phi}\bm{\Gamma}^{\intercal} + \bm{\Psi})(\bm{I} - \bm{B})^{-1\intercal}\bm{\Lambda}_{y}^{\intercal} + \bm{\Theta}_{\epsilon} \\
+\end{align}
+
+where $\bm{\Phi}$ is the covariance matrix of the latent exogenous variables and $\bm{\Psi}$ is again the covariance matrix of the disturbances. This is the model-implied covariance matrix for the vector of endogenous observed variables. For the exogenous observed variables, we can proceed in a similar fashion and obtain
+\begin{align}
+\bm{\Sigma}_{xx}(\bm{\theta}) & = \E(\bm{x}\bm{x}^{\intercal}) \\
+ & = \E[(\bm{\Lambda}_{x}\bm{\xi} + \bm{\delta})(\bm{\Lambda}_{x}\bm{\xi} + \bm{\delta})^{\intercal}] \\
+ & = \E[(\bm{\Lambda}_{x}\bm{\xi} + \bm{\delta})(\bm{\xi}^{\intercal}\bm{\Lambda}_{x}^{\intercal} + \bm{\delta}^{\intercal})] \\
+ & = \bm{\Lambda}_{x}\bm{\Phi}\bm{\Lambda}_{x}^{\intercal} + \bm{\Theta}_{\delta}
+\end{align}
+
+(since $\E(\bm{\xi}\bm{\delta}^{\intercal}) = \E(\bm{\delta}\bm{\xi}^{\intercal}) = \bm{0}$) where, again, $\bm{\Phi}$ is the covariance matrix of the latent exogenous variables and $\bm{\Theta}_{\delta}$ is the covariance matrix of the measurement errors for $x$. Finally, we have 
+\begin{align}
+\bm{\Sigma}_{yx}(\bm{\theta}) & = \E(\bm{y}\bm{x}^{\intercal}) \\
+ & = \E[(\bm{\Lambda}_{y}\bm{\eta} + \bm{\epsilon})(\bm{\Lambda}_{x}\bm{\xi} + \bm{\delta})^{\intercal}] \\
+ & = \E[(\bm{\Lambda}_{y}\bm{\eta} + \bm{\epsilon})(\bm{\xi}^{\intercal}\bm{\Lambda}^{\intercal} + \bm{\delta}^{\intercal})] \\
+ & = \bm{\Lambda}_{y}\E(\bm{\eta}\bm{\xi}^{\intercal})\bm{\Lambda}_{x}^{\intercal}.
+\end{align}
+
+Remember, though, that $\bm{\eta} = (\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\xi} + \bm{\zeta})$, so \begin{align}
+\E(\bm{\eta}\bm{\xi}^{\intercal}) & = \E[((\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\xi} + \bm{\zeta}))\bm{\xi}^{\intercal}] \\
+ & = (\bm{I} - \bm{B})^{-1}\bm{\Gamma}\E(\bm{\xi}\bm{\xi}^{\intercal}) \\
+ & = (\bm{I} - \bm{B})^{-1}\bm{\Gamma}\bm{\Phi}
+\end{align}
+ 
+(since $\E(\bm{\zeta}\bm{\xi}^{\intercal}) = \bm{0}$) so we have 
+\begin{align}
+\bm{\Sigma}_{yx}(\bm{\theta}) & = \bm{\Lambda}_{y} (\bm{I} - \bm{B})^{-1}\bm{\Gamma} \bm{\Phi}\bm{\Lambda}_{x}^{\intercal}.
+\end{align}
+
+Now, we put these all together into the model-implied covariance matrix, which is subdivided into the matrices we just worked out
+\begin{align}
+\bm{\Sigma}(\bm{\theta}) & = 
+\begin{bmatrix} 
+\bm{\Sigma}_{yy}(\bm{\theta}) & \bm{\Sigma}_{yx}(\bm{\theta}) \\
+\bm{\Sigma}_{xy}(\bm{\theta}) & \bm{\Sigma}_{xx}(\bm{\theta})
+\end{bmatrix} \\
+ & = 
+\begin{bmatrix}
+\bm{\Lambda}_{y}(\bm{I} - \bm{B})^{-1}(\bm{\Gamma}\bm{\Phi}\bm{\Gamma}^{\intercal} + \bm{\Psi})(\bm{I} - \bm{B})^{-1\intercal}\bm{\Lambda}_{y}^{\intercal} + \bm{\Theta}_{\epsilon} &  \bm{\Lambda}_{y} (\bm{I} - \bm{B})^{-1}\bm{\Gamma} \bm{\Phi}\bm{\Lambda}_{x}^{\intercal} \\
+\bm{\Lambda}_{x}\bm{\Phi}\bm{\Gamma}^{\intercal}(\bm{I} - \bm{B})^{-1\intercal}\bm{\Lambda}_{y}^{\intercal} & \bm{\Lambda}_{x}\bm{\Phi}\bm{\Lambda}_{x}^{\intercal} + \bm{\Theta}_{\delta}
+\end{bmatrix}.
+\end{align}
+
+Notice one of the reasons why it is called the 'general' SEM: if we assume the variables are measured without error, i.e., $\bm{\Theta}_{\epsilon} = \bm{\Theta}_{\delta} = \bm{0}$ and $\bm{\Lambda}_{y} = \bm{I}$ and $\bm{\Lambda}_{x} = \bm{I}$, then the equations reduce to the linear and mediation models with observed variables we started the course with. If we set $\bm{B} = \bm{\Gamma} = \bm{0}$, $\bm{\Theta}_{\epsilon} = \bm{0}$, $\bm{\Lambda}_{y} = \bm{0}$ and $\bm{\Psi} = \bm{0}$ then we get the confirmatory factor analysis model.
+
+## Identification 
+
+As the models become more complicated, the issue of identification becomes even more important. Take the hypothetical example shown in Figure \ref{fig:fullsem}. 
+
+Remember, regardless of how many latent variables and errors are shown in the model, the only pieces of empirical information are the observed variances and covariances. In this example, we have three exogenous indicators and three endogenous indicators. By looking at a covariance matrix or by using the formula $p(p + 1)/2$, where $p$ is the number of observed variables overall, we have $6(6 + 1)/2 = 6(7)/2 = 42/2 = 21$ pieces of empirical information. We can estimate up to 21 parameters for a just-identified model. 
+
+It is easiest to refer to the path diagram to find the number of parameters to estimate. We have six measurement error variances, four factor loadings (since we will be fixing one factor loading on each measurement model to 1.0), one regression coefficient, the variance of the exogenous latent variable and the disturbance variance. This gives $6 + 4 + 1 + 1 + 1 = `r 6 + 4 + 1 + 1 + 1`$ parameters to be estimated, so we have 21 - 13 = 8 degrees of freedom. The model is thus over-identified and we can assess its fit. 
+
+\begin{table}
+\centering 
+\caption{Notation}
+\label{tab:notation}
+\begin{tabular}{c l l}
+\toprule
+Symbol & Pronunciation & Explanation \\
+\midrule
+$\bm{x}$ & & vector of exogenous observed variables \\
+$\bm{y}$ & & vector of endogenous observed variables \\
+$\bm{\xi}$ & ksi & vector of exogenous latent variables \\
+$\bm{\eta}$ & eta & vector of endogenous latent variables \\
+$\bm{\zeta}$ & zeta & vector of disturbances \\
+$\bm{\delta}$ & delta & vector of exogenous measurement errors \\
+$\bm{\epsilon}$ & epsilon & vector of endogenous measurement errors \\
+\midrule
+x & & exogenous (independent) observed variable \\
+y & & endogenous (dependent) observed variable \\
+$\xi$ & ksi & exogenous latent variable \\
+$\eta$ & eta & endogenous latent variable \\
+$\zeta$ & zeta & error or disturbance of endogenous latent variable \\
+$\delta$ & delta & error of exogenous observed variable \\
+$\epsilon$ & epsilon & error of endogenous observed latent variable \\
+\midrule 
+$\bm{\Lambda}_{x}$ & Lambda x & factor loading matrix for exogenous variables \\
+$\bm{\Lambda}_{y}$ & Lambda y & factor loading matrix for endogenous variables \\ 
+\midrule
+$\bm{\Phi}$ & Phi & covariance matrix of exogenous latent variables \\
+$\bm{\Psi}$ & Psi & covariance matrix of endogenous variables (errors/disturbances) \\
+$\bm{\Theta}_{\delta}$ & Theta delta & covariance matrix of the exogenous errors \\
+$\bm{\Theta}_{\epsilon}$ & Theta epsilon & covariance matrix of the endogenous variables (errors) \\
+\midrule 
+$\tau_{x}$ & tau x & intercept of observed exogenous variable \\
+$\tau_{y}$ & tau y & intercept of observed endogenous variable \\
+$\lambda_{x}$ & lambda x & element of matrix $\bm{\Lambda}_{x}$ \\
+$\lambda_{y}$ & lambda y & element of matrix $\bm{\Lambda}_{y}$ \\
+$\theta_{\delta}$ & theta delta & element of matrix $\bm{\Theta}_{\delta}$ \\
+$\theta_{\epsilon}$ & theta delta & element of matrix $\bm{\Theta}_{\epsilon}$ \\
+$\phi$ & phi & element of matrix $\bm{\Phi}$ \\
+$\psi$ & psi & element of matrix $\bm{\Psi}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+# Empirical example
+
+Most sociological, as well as psychological concepts cannot be measured directly. We may try to measure such constructs using, say, questions in a survey, but for the most part, we must admit that our measures will tend to be crude approximations of the underlying concept and that we typically have to deal with measurement error. 
+
+Researchers have known this for many years though, and their is the entire field of psychometrics whose work looks at and assesses measurements of more or less abstract concepts. This is why most social surveys assess concepts like xenophobia, need for social approval, environmental attitudes, etc. using scales whose properties (reliability and validity) have been tested to certain extents. GESIS, for example, hosts an open access repository for measurement instruments called the Zusammenstellung sozialwissenschaftlicher Items und Skalen (ZIS, https://zis.gesis.org/). ZIS collects indicators meant to measure a specific concept whose properties have been tested systematically in the past. 
+
+We now expand our measures of xenophobia and populism to multiple indicator measurement models and specify the general SEM. We will bring social class back in as an observed predictor in the next section. To measure xenophobia, we will use:
+
+- `px06`: "There is a dangerous amount of foreigners living in Germany"
+- `px07`: "Foreigners should marry amongst their own people"
+- `px10`: "Attacks on asylum-seeker housing are understandable"
+
+where 1: "fully disagree", ..., 5: "fully agree". For populist sentiment, we will use the following indicators:
+
+- `pa30r`: "Politicians talk too much instead of acting (recoded)"
+- `pa32r`: "Political compromise is a betrayal of principals (recoded)"
+- `pa35r`: "Politicians only represent the rich (recoded)"
+
+where also 1: "fully disagree", ..., 5: "fully agree". 
+
+The procedure for testing an SEM normally involves *two steps*. 
+
+1. Fit a CFA of all the latent constructs of the model.
+2. If the fit of the CFA is adequate proceed with the SEM.
+
+We usually proceed in two steps because once we have fit the SEM, misfit could be caused by either a) the measurement models or b) the structural relations. Take the path diagram in Figure \ref{fig:semmisfit} as an example:
+
+\begin{figure}
+\centering
+\caption{Misfit due to measurement (blue) or structural (red) portion}
+\label{fig:semmisfit}
+\begin{tikzpicture}[node distance={15mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[lat] (eta1) {$\eta_{1}$};
+\node[lat] (eta2) [right =45mm of eta1] {$\eta_{2}$};
+\node[err] (zeta1) [above right of=eta1] {$\zeta_{1}$};
+\node[err] (zeta2) [above right of=eta2] {$\zeta_{2}$};
+\node[man] (y21) [below of=eta1] {$y_{21}$};
+\node[man] (y11) [left of=y21] {$y_{11}$};
+\node[man] (y31) [right of=y21] {$y_{31}$};
+\node[lat] (xi1) [left =45mm of eta1] {$\xi_{1}$};
+\node[man] (x21) [below of=xi1] {$x_{21}$};
+\node[man] (x11) [left of=x21] {$x_{11}$};
+\node[man] (x31) [right of=x21] {$x_{31}$};
+\node[man] (y22) [below of=eta] {$y_{22}$};
+\node[man] (y12) [left of=y22] {$y_{12}$};
+\node[man] (y32) [right of=y22] {$y_{32}$};
+\node[err] (e12) [below =5mm of y12] {$\epsilon_{12}$};
+\node[err] (e22) [below =5mm of y22] {$\epsilon_{22}$};
+\node[err] (e32) [below =5mm of y32] {$\epsilon_{32}$};
+\node[err] (e11) [below =5mm of y11] {$\epsilon_{11}$};
+\node[err] (e21) [below =5mm of y21] {$\epsilon_{21}$};
+\node[err] (e31) [below =5mm of y31] {$\epsilon_{31}$};
+\node[err] (d11) [below =5mm of x11] {$\delta_{11}$};
+\node[err] (d21) [below =5mm of x21] {$\delta_{21}$};
+\node[err] (d31) [below =5mm of x31] {$\delta_{31}$};
+\draw[->] (eta1) -- node[midway, above] {$\beta_{1}$} (eta2);
+\draw[->] (xi1) -- node[midway, above] {$\gamma_{1}$} (eta1);
+\path[->] (xi1) edge [draw=red, bend left=50] node [above] {} (eta2); 
+\draw[->] (zeta1) -- node[midway, above] {} (eta1);
+\draw[->] (zeta2) -- node[midway, above] {} (eta2);
+\draw[->] (eta1) -- node[midway, left] {$\lambda_{y_{11}}$} (y11);
+\draw[->] (eta1) -- node[midway, right] {$\lambda_{y_{21}}$} (y21);
+\draw[->] (eta1) -- node[midway, right] {$\lambda_{y_{31}}$} (y31);
+\draw[->] (eta2) -- node[midway, left] {$\lambda_{y_{12}}$} (y12);
+\draw[->] (eta2) -- node[midway, right] {$\lambda_{y_{22}}$} (y22);
+\draw[->] (eta2) -- node[midway, right] {$\lambda_{y_{32}}$} (y32);
+\draw[->] (xi1) -- node[midway, left] {$\lambda_{x_{11}}$} (x11);
+\draw[->] (xi1) -- node[midway, right] {$\lambda_{x_{21}}$} (x21);
+\draw[->] (xi1) -- node[midway, right] {$\lambda_{x_{31}}$} (x31);
+\draw[->] (d11) -- node[midway] {} (x11);
+\draw[->] (d21) -- node[midway] {} (x21);
+\draw[->] (d31) -- node[midway] {} (x31);
+\draw[->] (e11) -- node[midway] {} (y11);
+\draw[->] (e21) -- node[midway] {} (y21);
+\draw[->] (e31) -- node[midway] {} (y31);
+\draw[->] (e12) -- node[midway] {} (y12);
+\draw[->] (e22) -- node[midway] {} (y22);
+\draw[->] (e32) -- node[midway] {} (y32);
+\draw[<->] (d11.-90) arc (0:-264:3.5mm);
+\draw[<->] (d21.-90) arc (0:-264:3.5mm);
+\draw[<->] (d31.-90) arc (0:-264:3.5mm);
+\draw[<->] (e11.-90) arc (0:-264:3.5mm);
+\draw[<->] (e21.-90) arc (0:-264:3.5mm);
+\draw[<->] (e31.-90) arc (0:-264:3.5mm);
+\draw[<->] (e12.-90) arc (0:-264:3.5mm);
+\draw[<->] (e22.-90) arc (0:-264:3.5mm);
+\draw[<->] (e32.-90) arc (0:-264:3.5mm);
+\draw[<->] (zeta1.90) arc (0:264:3.5mm);
+\draw[<->] (zeta2.90) arc (0:264:3.5mm);
+\path[->] (eta1) edge [draw=blue] node[above] {} (y12);
+\end{tikzpicture}
+\end{figure}
+
+If we fit the entire model simultaneously and find that the fit is inadequate, it will be more difficult for us to determine whether the misfit is due to a problem in the measurement model, or whether it is due to some structural parameter. For example, maybe an indicator loads strongly on two different latent variables (cross-loading). This is shown in Figure \ref{fig:semmisfit} with the blue factor loading going from $\eta_{1}$ to $y_{12}$. Fixing the cross-loading to zero (since we normally assume each indicator loads on one and only one latent variable) will be a source of misfit. The structural part might be correctly specified but our model will fit suboptimally. 
+
+On the other hand, our measurement model might be correctly specified but our structural model may be misspecified. In Figure \ref{fig:semmisfit}, we are (implicitly) assuming $\eta_{1}$ is a total mediator of the effect of $\xi_{1}$ on $\eta_{2}$. If this assumption is wrong, and there is an effect over and above the mediator (the direct effect of $\xi_{1}$ on $\eta_{2}$, shown in red), then our structural model will be misspecified and our model will fit suboptimally. 
+
+The solution to this problem is to first *fit a CFA with all the latent variables simultaneously* (notice this is not the same as estimating a separate CFA for each construct). We *allow the latent variables to covary with each other freely*. Allowing them to all covary with each other means the structural portion of the model is saturated; if we allow $\xi_{1}$ to covary with $\eta_{1}$ and $\eta_{2}$ and $\eta_{2}$ to covary with $\eta_{3}$ then we have zero degrees of freedom and the *fit at the structural level will be perfect.* If the model nevertheless does not fit adequately, then we know that the source of misfit is at the measurement level --- it is the only level on which we are imposing any constraints. 
+
+## Simultaneous CFA
+
+Let us now fit the simultaneous CFA for populism and xenophobia. 
+
+```{r}
+# Load packages
+library(haven)
+library(lavaan)
+
+# Set working directory 
+setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+
+# Import ALLBUS 2018 
+df <- read_sav("allbus2018.sav")
+
+# Simultaneous CFA
+cfa1 <- '
+# Measurement models
+  populism   =~ 1*pa30r + l21*pa32r + l31*pa35r
+  xenophobia =~ 1*px06  + l22*px07  + l32*px10
+# Exogenous variances
+  populism   ~~ phi11*populism
+  xenophobia ~~ phi22*xenophobia
+# Error variances
+  pa30r ~~ theta11*pa30r 
+  pa32r ~~ theta21*pa32r
+  pa35r ~~ theta31*pa35r
+  px06  ~~ theta12*px06
+  px07  ~~ theta22*px07
+  px10  ~~ theta32*px10
+# Covariance
+  populism ~~ phi21*xenophobia
+'
+cfa1.fit <- cfa(model = cfa1, data = df, estimator = "ML")
+```
+
+Remember the syntax here is much more complicated than it needs to be. The model could be estimated with as little as
+
+```{r eval=FALSE}
+cfa1 <- '
+populism =~ pa30r + pa32r + pa35r
+xenophobia =~ px06 + px07  + px10
+populism ~~ xenophobia 
+'
+```
+
+Now let us look at the results. 
+
+```{r}
+summary(cfa1.fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+From this, we see that the measurement model for populism works quite well. If we take the more conservative rule of thumb that each standardized factor loading should be > 0.7, the model is adequate. The model for xenophobia, on the other hand, is less than optimal. The standardized factor loading for `px10` is < 0.5, which indicates the inter-item correlation between it and the other items is potentially low. 
+
+Looking at the fit indices, we see the chi square test is 91.128 with 8 degrees of freedom and significant. This suggests we should reject the null hypothesis that the model-implied covariance matrix matches the observed matrix. On the other hand, the CFI and TLI measures are larger than 0.950, the RMSEA is only just over 0.05, and the SRMR is well below 0.05. Taken together, we could conclude that the fit is suboptimal but not terrible. We may want to proceed with the model nevertheless, especially if we consider the variable `px10` as an essential indicator for xenophobia from a theoretical standpoint. 
+
+In other words, sometimes there are theoretical arguments for including indicators. For example, the classic definition of authoritarianism involves a subservience to those perceived above one's own standing and a desire to dominate those perceived to be below. In such a case, we would have a theoretical argument for including indicators of both characteristics, which may trump issues of fit. 
+
+Here, there is probably no good theoretical argument for why an acceptance of attacks on asylum-seeker housing is an essential indicator of xenophobia. We will keep the indicator in for now, knowing full well that the measurement model could be improved by either dropping the indicator or replacing it with another one. 
+
+## Full SEM 
+
+Assuming we were satisfied with the fit of the CFA, we could move on to the full SEM. We simply need to use what we have learned up until now at the latent variable-level. When we want to regress a latent variable on another, we simply use the `~` regression operator, just as before. The only difference between the CFA and the SEM in this case is that the correlation will now be a regression coefficient.^[Notice that in this rather simple example, the procedure of first estimating the CFA and then the SEM is redundant! Whether we allow the latent variables to covary or regress one on the other, the covariance between the two will be captured. The two-step procedure only really makes sense when some constraints are being applied to the structural level.]
+
+```{r}
+# Full SEM
+sem1 <- '
+# Measurement models
+  populism   =~ 1*pa30r + lx21*pa32r + lx31*pa35r
+  xenophobia =~ 1*px06  + ly21*px07  + ly31*px10
+# Regression 
+  xenophobia ~ gamma1*populism
+# Exogenous variances
+  populism   ~~ phi11*populism
+# Disturbance variance
+  xenophobia ~~ psi11*xenophobia
+# Error variances
+  pa30r ~~ theta11*pa30r 
+  pa32r ~~ theta21*pa32r
+  pa35r ~~ theta31*pa35r
+  px06  ~~ theta12*px06
+  px07  ~~ theta22*px07
+  px10  ~~ theta32*px10
+'
+sem1.fit <- sem(model = sem1, data = df, estimator = "ML")
+summary(sem1.fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+Again, it is worth highlighting the fact that this model is essentially identical to the simultaneous CFA from above since all we have done is change a correlation to a regression effect. The fit, measurement models and error variances are all identical except now instead of estimating the variance of xenophobia, we are estimating the disturbance variance, the part that is unrelated to populism. 
+
+Nevertheless, we can see a strong positive effect of populism on xenophobia, with an unstandardized effect of $0.960^{***} \ (0.043)$ that translates to a standardized effect of 0.624. An increase of one standard deviation in populism leads to a 0.624 standard deviation increase in xenophobia. 
+
+Since the scales of the latent variables are rather arbitrary, we tend to focus on the standardized effects and interpret the magnitude of the effect, first and foremost. 
+
+## Including observed predictors: the MIMIC model 
+
+The Multiple Indicators Multiple Causes (MIMIC) model is an extension of the general SEM in which we have observed covariates predicting at least one endogenous latent variable. Say we were interested in whether males or females tended to differ in terms of their populist sentiment. Then we would regress our latent populism variable on the observed variable for the respondent's sex. 
+
+Let us say we were willing to assume social class was measured without error. Then we could include it in the model as an observed predictor for xenophobia and populism just as in the mediation model. The implementation is straightforward, we simply regress the latent variables, now both endogenous, on the observed variable `id02`. This would be one example of a MIMIC model.
+
+```{r}
+# MIMIC model
+sem2 <- '
+# Measurement models
+  populism   =~ 1*pa30r + lx21*pa32r + lx31*pa35r
+  xenophobia =~ 1*px06  + ly21*px07  + ly31*px10
+# Regressions 
+  xenophobia ~ gamma1*id02 + beta1*populism # Change coefficient names around
+  populism   ~ gamma2*id02
+# Exogenous variances
+  id02       ~~ phi11*id02 # Class is only exogenous variable now 
+# Disturbance variance
+  xenophobia ~~ psi11*xenophobia # Both xeno and pop are endogenous now
+  populism   ~~ psi22*populism
+# Error variances
+  pa30r ~~ theta11*pa30r 
+  pa32r ~~ theta21*pa32r
+  pa35r ~~ theta31*pa35r
+  px06  ~~ theta12*px06
+  px07  ~~ theta22*px07
+  px10  ~~ theta32*px10
+'
+sem2.fit <- sem(model = sem2, data = df, estimator = "ML")
+summary(sem2.fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+Here, we see the model fit has changed only slightly, with a still significant chi square statistic, but good CFI and TLI, as well as RMSEA and SRMR values. The rest of the model (e.g., measurement portion) has also changed only slightly. 
+
+The regressions are the main focus, and we see a significant negative effect of class on xenophobia with $-0.216^{***} \ (0.035)$ which translates to a standardized effect of $-0.138$. For every unit class increases, xenophobia decreases by 0.216 'units'. When class increases by one standard deviation, xenophobia decreases by 0.138 standard deviations. 
+
+Note that it may not make much sense to think of social class in standard deviations because it is measured on a Likert scale with only five categories. If we want, we can interpret the column `Std.lv`, in which only the latent variable is standardized. The effect is $-0.205$ which means that for every unit increase in class, xenophobia decreases by 0.205 standard deviations. 
+
+The effect of class on populism is also significant and negative with an effect of $-0.423^{***} \ (0.022)$ and a standardized effect (`Std.all`) of $-0.413$. Here, again, the column `Std.lv` may make the most sense to interpret: for every unit increase in class, populism decreases by $0.612$ standard deviations. 
+
+We can compare the results of the MIMIC model with the mediation model from before. 
+
+```{r}
+# Rename variables for easier comparison
+df$xenophobia <- df$px06
+df$populism <- df$pa30r
+
+# Re-fit the mediation model with observed variables
+mm1 <- '
+# Regressions
+  xenophobia ~ gamma1*id02 + beta1*populism
+  populism   ~ gamma2*id02
+# Exogenous variance 
+  id02 ~~ phi11*id02
+# Endogenous variances
+  xenophobia ~~ psi11*xenophobia
+  populism   ~~ psi22*populism
+'
+mm1.fit <- sem(model = mm1, data = df, estimator = "ML")
+summary(mm1.fit, standardized = TRUE) # Fit measures redundant 
+```
+
+```{r echo=FALSE}
+# Need to delete these columns because they cause a conflict later 
+# when naming latent variables something that exists in the df 
+df$xenophobia <- NULL
+df$populism <- NULL
+```
+
+Notice that in the mediation model, both xenophobia and populism are assumed to be measured without error. This lead to an estimated effect of $0.462^{***} \ (0.024)$ of populism on xenophobia (standardized: 0.322). When we correct for measurement error, and compare this to the effect we see in the MIMIC model, we see that there is attenuation bias happening. In the MIMIC model, the effect is much stronger, with $0.866^{***} \ (0.045)$ and a standardized effect of 0.566. 
+
+# Modification indices 
+
+In the model `sem2.fit`, we saw conflicting fit information. The chi square test was significant, suggesting misfit, but the rest of the fit indices, notably CFI and SRMR were quite good. TLI and RMSEA were acceptable but not optimal. 
+
+One way to deal with this --- arguably the appropriate way --- would be to go back to the theory and double-check that our model is properly specified from a substantive standpoint. In other words, does the theory suggest a direct effect of class on xenophobia over and above the mediated effect of populism? If we had held this direct path to zero, and the fit was poor, we could consider freeing this path and re-examining the fit. 
+
+On the measurement side, we typically have less to go on from a theory standpoint. Normally we work with the scales and variables we have available, and it is not uncommon for tested scales to perform suboptimally on new data or in new contexts. But a CFA is *confirmatory* rather than exploratory, after all, and it is not uncommon to fine-tune measurement models based on empirical evidence after the base model has been specified. For example, the factor loading for the indicator `px10` is rather low. If there is no good theoretical argument for keeping the indicator in the measurement model, and if we have enough degrees of freedom to spare, we might consider deleting this indicator. Whether or not we are able to capture the underlying latent variable using just two indicators is not a question that can be answered empirically, and we would arguably prefer a well-fitting measurement model with many indicators vs. a well-fitting measurement model with just a few.
+
+Another much more debatable approach is to *allow the data to speak for themselves*. In other words, completely isolated from theoretical considerations, we could proceed in a *completely exploratory fashion*, by either 
+
+- *introducing new parameters* to the model to account for more sources of covariation, or by 
+- *removing redundant parameters* to increase the parsimony of the model and the chi square to degrees of freedom ratio. 
+
+## Adding new parameters
+
+The former are often called Lagrange Multipliers or Test Scores. They essentially tell us the change in model fit would result in relaxing the constraints on our model. Normally these constraints entail setting certain parameters to zero. For example, in formulating our measurement models, we implicitly constrain all the possible cross-loadings (which are a feature of exploratory, rather than confirmatory factor analysis) to zero. 
+
+So, the Lagrange Multipliers tell us the improvement in fit we could expect for each of these constrained parameters. Large statistics essentially tell us there is some source of covariance we are neglecting. We can get a list of all the possible changes to the model using `modindices()` where we enter the fitted model as an argument. We can use the optional argument `sort = TRUE` to display the potential modifications with the largest impact first. 
+
+```{r}
+# Full list of modification indices (Lagrange Multiplier)
+modindices(sem2.fit, sort = TRUE)
+```
+
+The table tells us in the first three columns what parameter is meant. For example, `populism =~ px06` means the test is suggesting a cross-loading of the indicator `px06` on populism. The column `mi` tells us the approximate improvement to chi square if we were to allow that parameter to be freely estimated. The larger the value, the greater the improvement. The column after that, `epc` is the expected parameter change. That is an approximation of the parameter estimate without actually having fit the model. So, the factor loading that is now set to zero would likely turn out to be an unstandardized factor loading of about 0.65. However, in practice, the expected change rarely equals the actual change once the model is respecified, so this is just a rough idea. The last columns are variations of standardized expected parameter changes. `sepc.lv` is the "epc" for standardized latent variables, `sepc.all` is the "epc" where both the variables are standardized.^[I am not sure what `sepc.nox` is because it is not mentioned in the documentation, https://lavaan.ugent.be/tutorial/modindices.html, but it seems to be essentially identical to `sepc.all`.]
+
+Again, the modification indices are completely exploratory and theory-free. They just tell us where residual correlations are, even if they might make zero sense from a theoretical point of view. In the case of `populism =~ px06`, where `px06` is the item "There is a dangerous amount of foreigners living in Germany", we might be able to make the case that this expression is closely tied to populist arguments in Germany at the moment. 
+
+So, this modification seems justified by theory or at least everyday knowledge. However, even if the modification can be justified, it arguably weakens the rest of the model by calling the validity of the measurements into question. As we discussed in the CFA section, construct validity means the latent variable is strongly linked to its indicators (convergent validity), while its indicators should not be strongly linked to the other latent variables (divergent validity). If we cannot establish this baseline, then how can we be sure we are capturing what we intend to in the latent variables? If we cannot establish their validity, then the substantive results of the structural model must also be called into question. 
+
+A perhaps more focused way to test the constraints in the model is to look at individual parameters rather than generating a list of all the possible parameters. We can use `lavTestScore()` to investigate this without having to re-estimate the model, which can be convenient. We supply the fitted model as well as the parameters to "add", like this, for example: 
+
+```{r}
+lavTestScore(sem2.fit, add = "xenophobia =~ pa32r")
+```
+
+From this, we see that adding this cross-loading would improve the chi square by about 12.703 units, which is just what we saw in the table of all modification indices above. 
+
+## Dropping redundant parameters
+
+We know that some fit indices like CFI take the parsimoniousness --- in other words, the simplicity --- of the model into account by creating a ratio of chi square to degrees of freedom. For two models with the same chi square, the CFI and other comparative measures will favour the one with more degrees of freedom, the simpler of the two ("doing more with less"). So, another (debatable) strategy is to look for freely estimated parameters that do not explain very much covariance in the model. Essentially, we are looking for parameters to set to zero at the loss of some fit, but in the service of gaining degrees of freedom. 
+
+These are sometimes called Wald statistics, and they tell us the amount with which chi square would worsen if we set the parameter to zero. If the statistic is small, it means the model fit will only decrease slightly, with the benefit of a degree of freedom extra. 
+
+To my knowledge, there is no way to get a table or list of all possible parameters that could be set to zero. Instead, we need to test individual hypotheses using `lavTestWald()` where we give the fitted model along with the parameter we want to constrain. For example, we could check the amount with which the model fit would worsen if we fixed the direct effect of class on xenophobia to zero^[Notice this is essentially identical to the chi square difference test where we tested the difference in fit between a more general and a more constrained model.]
+
+```{r}
+lavTestWald(sem2.fit, constraints = "gamma1 == 0")
+```
+
+The output tells us the chi square would worsen by approximately 38.017, and that this worsening of fit is highly significant. In other words, fixing the parameter to zero would significantly reduce fit. Ideally, if we are looking for redundant parameters, we would look for those that did not cause a significant decrease in fit. 
+
+\clearpage
+
+# References 

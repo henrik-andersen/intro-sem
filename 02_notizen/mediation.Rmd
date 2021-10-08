@@ -1,0 +1,643 @@
+---
+title: "Introduction to Structural Equation Modeling: Mediation and Path Analysis"
+author: "Henrik Kenneth Andersen"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output: pdf_document
+header-includes:
+   - \usepackage{booktabs}
+   - \usepackage{threeparttable}
+   - \usepackage{tikz}
+   - \usetikzlibrary{positioning}
+   - \usetikzlibrary{calc}
+   - \usetikzlibrary{shapes}
+   - \usepackage{float}
+   - \usepackage{mathtools}
+   - \usepackage{amsfonts}
+   - \mathtoolsset{showonlyrefs}
+   - \usepackage{subfig}
+   - \usepackage{bm}
+   - \DeclareMathOperator{\E}{\mathbb{E}}
+   - \DeclareMathOperator{\Var}{\mathrm{Var}}
+   - \DeclareMathOperator{\Cov}{\mathrm{Cov}}
+   - \DeclareMathOperator{\var}{\mathrm{var}}
+   - \DeclareMathOperator{\cov}{\mathrm{cov}}
+   - \DeclareMathOperator{\Cor}{\mathrm{Cor}}
+   - \DeclareMathOperator{\tr}{tr}
+   - \DeclareMathOperator{\sd}{\mathrm{sd}}
+link-citations: yes
+linkcolor: blue
+bibliography: "../references.bib"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(Rcpp)
+```
+
+```{r script-hooks, echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+library(knitr)
+
+# Script hook for printing only certain lines
+hook_output <- knit_hooks$get("output")
+knit_hooks$set(output = function(x, options) {
+  lines <- options$output.lines
+  if (is.null(lines)) {
+    return(hook_output(x, options))  # pass to default hook
+  }
+  x <- unlist(strsplit(x, "\n"))
+  more <- "..."
+  if (length(lines)==1) {        # first n lines
+    if (length(x) > lines) {
+      # truncate the output, but add ....
+      x <- c(head(x, lines), more)
+    }
+  } else {
+    x <- c(if (abs(lines[1])>1) more else NULL, 
+           x[lines], 
+           if (length(x)>lines[abs(length(lines))]) more else NULL
+    )
+  }
+  # paste these lines together
+  x <- paste(c(x, ""), collapse = "\n")
+  hook_output(x, options)
+})
+
+# From: https://community.rstudio.com/t/showing-only-the-first-few-lines-of-the-results-of-a-code-chunk/6963/2
+# Retrieved on: 26.05.2020
+```
+
+# Introduction 
+
+Let us re-examine the example of explaining xenophobia by social class and populism. We specified the linear regression model as 
+\begin{align}
+\text{xenophobia} & = \beta_{1}\text{class} + \beta_{2}\text{populism} + \epsilon
+\end{align}
+
+where all variables are mean-centered and $\E(\epsilon | \text{class}, \text{populism}) = \E(\epsilon) = 0$. We further assume we have a random sample, there is no perfect multicollinearity, and that the errors are homoskedastictic and normally distributed. The partial effects, $\beta_{1}$ and $\beta_{2}$ are derived based off the assumption that $\Cov(\text{class},\text{populism}) \ne 0$. 
+
+However, @Reinecke2010 posit that social class is in fact also a cause of populist sentiment (or rather, that lower social class causes anomia, where we assume here that populist sentiment is an extension of anomia). So, we would write 
+\begin{align}
+\text{populism} & = \beta_{3}\text{class} + \epsilon_{2}
+\end{align}
+
+where, now $\E(\epsilon_{2} | \text{class}) = \E(\epsilon_{2}) = 0$ and the other assumptions noted above also apply to this model. 
+
+We can represent the model as a path diagram: 
+
+\begin{figure}[H]
+\centering
+\caption{Theoretical model, xenophobia resulting from social class and populism}
+\begin{tikzpicture}[node distance={25mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[man] (class) {class};
+\node[man] (anom) [below right of=class] {populism};
+\node[man] (xeno) [above right of=anom] {xenophobia};
+\node[err] (phan) [right =5mm of xeno] {};
+\node[err] (phan2) [right =5mm of anom] {};
+\node[err] (e1) [above =5mm of phan] {$\epsilon_{1}$};
+\node[err] (e2) [below =5mm of phan2] {$\epsilon_{2}$};
+\draw[->] (e1) -- node[midway, above] {} (xeno);
+\draw[->] (e2) -- node[midway, above] {} (anom);
+\draw[->] (class) -- node[midway, above] {$\beta_{1}$} (xeno);
+\draw[->] (class) -- node[midway, below] {$\beta_{3}$} (anom);
+\draw[->] (anom) -- node[midway, below] {$\beta_{2}$} (xeno);
+\end{tikzpicture}
+\label{fig:path1}
+\end{figure}
+
+Note that, for the sake of clarity, we change $\epsilon$ from the first model to $\epsilon_{1}$. 
+
+# Mediation analysis 
+
+With mediation analyses, sometimes call *path analysis*, we are usually interested in looking at *indirect effects*, where we decompose some bivariate association into the direct partial effect(s) and the indirect effect(s) that run over the mediator. 
+
+Specifically, with such a mediation analysis, we are interested in whether higher social class lowers xenophobia *because* higher social class lowers populist sentiment, and populist sentiment is what drives xenophobia. If this is the case, then we call populism a mediator of the effect of class on xenophobia. It could be the case that, after controlling for populism, so to speak, class has no further effect on xenophobia, i.e., those of higher or lower social class do not differ in terms of xenophobia, on average. Then we would say that we have identified the *mechanism* for the observed correlation between class and xenophobia. 
+
+Stated more generally, we want to know whether the observed bivariate effect runs entirely over the mediator, or if there remains a *direct effect* after controlling for the other variable. We also usually are interested in whether the *indirect effect* is significant or not, which we use to test the hypothesis that some variable is indeed a mediator. Formally, if we call the independent variable $x$, the mediatior $m$ and the dependent variable $y$, then the steps involved in a mediation analysis are usually: 
+
+1. Test the bivariate relationship of $x \rightarrow y$, note the sign, magnitude and significance. 
+2. Test the bivariate relationship of $x \rightarrow m$, note the sign, magnitude and significance. 
+3. Test the multivariate relationship $x, m \rightarrow y$, note sign magnitude and significance. 
+4. Compare the direct effect of $x \rightarrow y$ controlling for $m$ from (3) with the 'total' effect of $x \rightarrow y$ from (1).
+5. If the direct effect from (3) is closer to zero and nonsignificant, them $m$ is called a *total mediator*. If the direct effect from (3) remains significant, then $m$ is called a *partial mediator*. 
+
+We will go through these steps in the SEM, but steps 2--5 will occur simultaneously, in one go. 
+
+Before moving on, let us conduct step 1 and establish whether a bivariate effect even exists between class and xenophobia. This is not necessary (testing the mediation model might actually reveal a direct partial effect where there was none before)^[This can happen if the indirect effect is similar in magnitude to the direct effect but with an opposite sign.], but is often the motivation for moving on to the mediation model in the first place. 
+
+We can run a bivariate regression in `lavaan` just like the multivariate regression seen previously. Remember, the variables are:
+
+- social class ($x_{1})$: subjective social class (`id02`)
+- populism ($x_{2}$): "Politicians talk too much instead of acting [recoded]" (`pa30r`)
+- xenophobia ($y$): "There is a dangerous amount of foreigners living in Germany" (`px06`)
+
+```{r}
+# Load packages
+library(haven)
+library(lavaan)
+
+# Set working directory 
+setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+
+# Import ALLBUS 2018 
+# df <- read_sav("allbus_2018_small.sav")
+df <- read_sav("ZA5270_v2-0-0.sav")
+
+# Recode pa30 to match px06
+df$pa30r <- abs(df$pa30 - 6)
+
+# Re-label pa30 
+df$pa30r <- labelled(df$pa30r,
+                     labels = c("LEHNE VOLL UND GANZ AB" = 1,
+                                "LEHNE EHER AB" = 2,
+                                "TEILS/TEILS" = 3,
+                                "STIMME EHER ZU" = 4,
+                                "STIMME VOLL UND GANZ ZU" = 5),
+                     label = "POLITIKER REDEN ZU VIEL, HANDELN ZU WENIG (REKODIERT)")
+
+# Bivariate regression model 
+rm1 <- '
+px06 ~ gamma1*id02
+'
+rm1.fit <- sem(model = rm1, data = df, estimator = "ML")
+summary(rm1.fit)
+```
+
+From the summary, we see the model is based on 3180 observations. The model has zero degrees of freedom because we have three pieces of empirical information (two variances, one covariance) and must estimate three parameters (the regression coefficient, the variance of class and the error variance of xenophobia)^[Where, again, the variance of class is set to the sample variance, so we could actually say there are only two pieces of empirical information and we must only estimate two parameters (the model summary supports this, see `Number of model parameters: 2`), but this is a moot point because we end up with zero degrees of freedom either way.] 
+
+Importantly, there is a significant negative effect of $-0.576^{***} \ (0.036)$ of class on xenophobia. The higher the subjective class of an individual, the less xenophobic they are (or report themselves to be). This means a bivariate association does obviously exist, and we are now interested in answering the question as to whether this effect is *fully or partially mediated* by populist sentiment. 
+
+## Terms and notation
+
+Notice now that populism is at once an independent and a dependent variable in Figure \ref{fig:path1}. This means that the terms *independent* and *dependent* variables are ambiguous here. For this reason, in SEM analyses, we prefer the terms *exogenous* and *endogenous*.
+
+- Exogenous variables are ones that are not explained by any other variable in the model. They have no arrows pointing towards them. 
+- Endogenous variables are explained by at least one other variable in the model. They have at least one arrow pointing towards them. 
+
+In this case, social class is the only exogenous variable. Both populism and xenophobia are endogenous variables. 
+
+We can rewrite the model in the form of two simultaneous equations:
+\begin{align}
+\text{xenophobia} & = \beta_{1}\text{class} + \beta_{2}\text{populism} + \epsilon_{1} \\
+\text{populism}   & = \beta_{3}\text{class} + \epsilon_{2}
+\end{align}
+
+We can represent these equations using matrix notation, which you will often encounter in SEM textbooks. In a more general form, we would write 
+\begin{align}
+\begin{bmatrix} y_{1} \\ y_{2} \end{bmatrix} & = 
+\begin{bmatrix} \beta_{1} & \beta_{2} \\ \beta_{3} & 0\end{bmatrix} 
+\begin{bmatrix} x_{1} \\ x_{2} \end{bmatrix} + 
+\begin{bmatrix} \epsilon_{1} \\ \epsilon_{2} \end{bmatrix}
+\end{align}
+
+or, more compactly, 
+\begin{align}
+\bm{y} & = \bm{\beta}\bm{x} + \bm{\epsilon}.
+\end{align}
+
+--- 
+
+For a review of matrix algebra, see @Bollen1989, Appendix A, although for our purposes it is enough to know what conforming matrices are and how to multiply them, see for example https://mathsisfun.com/algebra/matrix-multiplying.html. 
+
+For example, in the equation above, the first matrix has 2 rows and 2 columns, so we call it $2 \times 2$, while the *vector* of variables being multiplied has 2 rows and 1 column, or $2 \times 1$. The number of columns in the first matrix/vector must equal the number of rows in the second matrix/vector for them to be *conforming*. The resulting matrix/vector has the same number of rows as the first and the same number of columns as the second matrix/vector. 
+
+Multiplication involves multiplying the rows by the columns in each matrix/vector, where we add the terms together. 
+
+\begin{align}
+\begin{bmatrix}
+\color{blue} \beta_{1} & \color{blue} \beta_{2} \\ \color{red} \beta_{3} & \color{red} 0 \end{bmatrix}_{2 \times 2}
+\begin{bmatrix} \color{orange}  x_{1} \\ \color{orange}  x_{2} \end{bmatrix}_{2 \times 1} & = 
+\begin{bmatrix} \color{blue} \beta_{1} \color{orange} x_{1} \color{black} + \color{blue} \beta_{2} \color{orange} x_{2} \\ \color{red} \beta_{3} \color{orange} x_{1} \color{black} + \color{red} 0 \color{black} \cdot \color{orange} x_{2} \end{bmatrix}_{2 \times 1}
+\end{align}
+
+--- 
+
+The problem here is that $\bm{y} = (\text{xenophobia}, \text{populism})^{\intercal}$ and $\bm{x} = (\text{class}, \text{populism})^{\intercal}$, where populism appears in both $\bm{y}$ and $\bm{x}$, which can be confusing.
+
+Instead, we differentiate mainly between exogenous and endogenous variables and say $\bm{y} = (\text{xenophobia}, \text{populism})^{\intercal}$ and $\bm{x} = (\text{class})$. Then we represent the matrix of coefficients coming from the endogenous variables themselves as $\bm{B}$ (uppercase 'beta'), the matrix of coefficients coming from the exogenous variable $\bm{\Gamma}$ (uppercase 'gamma') and we rename the errors $\zeta$ because $\epsilon$ is normally reserved for measurement error, which we will discuss later. 
+
+Our equation thus changes to 
+\begin{align}
+\bm{y} & = \bm{B}\bm{y} + \bm{\Gamma}\bm{x} + \bm{\zeta} \\
+\begin{bmatrix} \text{xenophobia} \\ \text{populism} \end{bmatrix} & = 
+\begin{bmatrix} 0 & \beta_{1} \\ 0 & 0 \end{bmatrix}
+\begin{bmatrix} \text{xenophobia} \\ \text{populism} \end{bmatrix} + 
+\begin{bmatrix} \gamma_{1} \\ \gamma_{2} \end{bmatrix}
+\begin{bmatrix} \text{class} \end{bmatrix} + 
+\begin{bmatrix} \zeta_{1} \\ \zeta_{2} \end{bmatrix}
+\end{align}
+
+or, 
+\begin{align}
+\text{xenophobia} & = 0 \cdot \text{xenophobia} + \beta_{1}\text{populism} + \gamma_{1}\text{class} + \zeta_{1} \\
+ & = \beta_{1}\text{populism} + \gamma_{1}\text{class} + \zeta_{1} \\
+\text{populism} & = 0 \cdot \text{xenophobia} + 0 \cdot \text{populism} + \gamma_{2}\text{class} + \zeta_{2} \\
+ & = \gamma_{2}\text{class} + \zeta_{2}
+\end{align}
+
+Now, we can adapt the path diagram to reflect the new notation
+
+\begin{figure}[H]
+\centering
+\caption{Theoretical model, new notation}
+\begin{tikzpicture}[node distance={25mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[man] (class) {class};
+\node[man] (anom) [below right of=class] {populism};
+\node[man] (xeno) [above right of=anom] {xenophobia};
+\node[err] (phan) [right =5mm of xeno] {};
+\node[err] (phan2) [right =5mm of anom] {};
+\node[err] (e1) [above =5mm of phan] {$\zeta_{1}$};
+\node[err] (e2) [below =5mm of phan2] {$\zeta_{2}$};
+\draw[->] (e1) -- node[midway, above] {} (xeno);
+\draw[->] (e2) -- node[midway, above] {} (anom);
+\draw[->] (class) -- node[midway, above] {$\gamma_{1}$} (xeno);
+\draw[->] (class) -- node[midway, below] {$\gamma_{2}$} (anom);
+\draw[->] (anom) -- node[midway, below] {$\beta_{1}$} (xeno);
+\end{tikzpicture}
+\label{fig:path1}
+\end{figure}
+
+Note that the matrix equations and the path model are *equivalent representations*. If you do not feel comfortable with the equations and matrix notation, you can instead fully communicate your model using path diagrams. 
+
+Note that in this model, we have six^[Strictly speaking, the variance of social class will be fixed to the sample value.] parameters to estimate, the coefficients $\gamma_{1}, \gamma_{2}, \beta_{1}$ as well as the variances. To highlight this fact, we sometimes place small recursive arrows around the error terms, like this:
+
+\begin{figure}[H]
+\centering
+\caption{Theoretical model, new notation}
+\begin{tikzpicture}[node distance={25mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[man] (class) {class};
+\node[man] (anom) [below right of=class] {populism};
+\node[man] (xeno) [above right of=anom] {xenophobia};
+\node[err] (phan) [right =5mm of xeno] {};
+\node[err] (phan2) [right =5mm of anom] {};
+\node[err] (e1) [above =5mm of phan] {$\zeta_{1}$};
+\node[err] (e2) [below =5mm of phan2] {$\zeta_{2}$};
+\draw[->] (e1) -- node[midway, above] {} (xeno);
+\draw[->] (e2) -- node[midway, above] {} (anom);
+\draw[->] (class) -- node[midway, above] {$\gamma_{1}$} (xeno);
+\draw[->] (class) -- node[midway, below] {$\gamma_{2}$} (anom);
+\draw[->] (anom) -- node[midway, below] {$\beta_{1}$} (xeno);
+\draw[<->] (e1.90) arc (0:264:3.5mm);
+\draw[<->] (e2.-90) arc (0:-264:3.5mm);
+\end{tikzpicture}
+\label{fig:path1}
+\end{figure}
+
+where, again it is not standard to do the same to the exogenous variables, since their variance is not typically 'estimated' but rather fixed to the sample value. We call the variances of the exogenous variables $\phi$, and the variances of the endogenous variable $\psi$. So, we can say the vector of unknown parameters is $\bm{\theta} = (\gamma_{1}, \gamma_{2}, \beta_{1}, \phi_{1}, \psi_{1}, \psi_{2})$.^[Sometimes, you will see double subscripts, i.e., $\phi_{11}$ which essentially stands for the covariance of $x_{1}$ with itself, or $\psi_{22}$ for the covariance of $\zeta_{2}$ with itself, so to speak.] Table \ref{tab:notation} summarizes the notation up until now. 
+
+\begin{table}
+\centering 
+\caption{Notation}
+\label{tab:notation}
+\begin{tabular}{c l l}
+\toprule
+Symbol & Pronunciation & Explanation \\
+\midrule 
+$x$ & & exogenous (independent) observed variable \\
+$y$ & & endogenous (dependent) observed variable \\
+$\zeta$ & zeta & error or disturbance of endogenous variable \\
+\midrule
+$\bm{B}$ & Beta & matrix of coefficients from endogenous to endogenous variables \\
+$\bm{\Gamma}$ & Gamma & matrix of coefficients from exogenous to endogeneous variables \\
+\midrule
+$\beta$ & beta & element of $\bm{B}$ \\
+$\gamma$ & gamma & element of $\bm{\Gamma}$ \\
+\midrule 
+$\phi$ & phi & variance of exogenous variable \\
+$\psi$ & psi & variance of endogenous variable \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+# Mediation models in `lavaan`
+
+Normally, with traditional regression techniques, we would estimate two separate models and 'put them together' afterwards to assess mediation. In the first model, we would, say, regression xenophobia on populism and class, and then in the second model, we would regress populism on class. 
+
+Using the SEM approach, mediation models can be estimated simultaneously. We just need to translate either the equations, or the path diagram from above into our model syntax. 
+
+```{r}
+# Mediation model 
+mm1 <- '
+# Regressions
+  px06 ~ gamma1*id02 + gamma2*pa30r
+  pa30r ~ beta1*id02
+# Exogeneous variances
+  id02 ~~ phi1*id02
+# Error variances
+  px06  ~~ psi1*px06
+  pa30r ~~ psi2*pa30r
+'
+mm1.fit <- sem(model = mm1, data = df, estimator = "ML")
+summary(mm1.fit)
+```
+
+## Significance testing indirect effect
+
+The so-called *Sobel Test* can be used to calculate the significance of indirect effects. From it, we get a $t$-statistic, where when $df > 120$, we can use the critical value $|t| > 1.96$ for our test.  
+
+The $t$-statistic is given by
+\begin{align}
+t & = \frac{\gamma_{2} \cdot \beta_{1}}{SE_{(\gamma_{2}\cdot \beta_{1})}}
+\end{align}
+
+where $SE_{(\gamma_{2}\cdot \beta_{1})}$ is the standard error of the indirect effect. To get it, we use the following formula:
+\begin{align}
+SE_{(\gamma_{2}\cdot \beta_{1})} & = \sqrt{\gamma_{2}^{2} \cdot SE_{\beta_{1}}^{2} + \beta_{1}^{2} \cdot SE_{\gamma_{2}}^{2}}
+\end{align}
+
+We can use `lavInspect()` where we supply the fitted model, along with the argument `"list"` to get a table of all the model parameters along with the estimates, standard errors, etc. We can use this to extract the necessary information to perform the significance test of the indirect effect by hand. 
+
+```{r}
+# Show list of parameters
+lavInspect(mm1.fit, "list")
+```
+
+We use `[,]`, or indexing, to refer to specific rows and columns of this table. For example, the effect `gamma2` is found in second column and the estimate is in column 14:
+
+```{r}
+gamma2 <- lavInspect(mm1.fit, "list")[2, 14]; gamma2
+```
+
+We can extract the rest of the necessary information like this, as well:
+
+```{r}
+# Extract rest of estimates and SEs
+beta1 <- lavInspect(mm1.fit, "list")[3, 14]
+se_gamma2 <- lavInspect(mm1.fit, "list")[2, 15]
+se_beta1 <- lavInspect(mm1.fit, "list")[3, 15]
+
+# SE indirect effect
+se_ind <- sqrt(gamma2^2 * se_beta1^2 + beta1^2 * se_gamma2^2)
+
+# Calculate the t-statistic
+t <- (gamma2 * beta1) / se_ind; t
+```
+
+The $t$-statistic here is `r round(t, 3)`, which is larger than 1.96 in absolute value, so we would conclude that the indirect effect is significant at the 95% level. 
+
+We use labels again for didactic purposes, i.e., to help make the translation of the path model/equations into model syntax clearer. But the labels can serve another purpose in mediation analysis. Namely, we can use the labels to *define new model parameters*. If we want to know the magnitude and significance of the indirect effect on the whole, we define a new parameter, call it `ind` for 'indirect' using the `:=` definition operator. We say the indirect effect is the product of the individual paths along the mediator, `gamma2*beta1`, see the path diagram above. To make the output even easier to read, we can even also define `dir` as the direct path (it is just `gamma1`) as well as the total effect, `tot`, which is the direct effect plus the product of the indirect paths, i.e., `gamma1 + gamma2*beta1`. The added benefit of this is we get a significance test of the entire indirect path, which we would have to calculate ourselves otherwise. 
+
+```{r}
+# Mediation model 
+mm1 <- '
+# Regressions
+  px06 ~ gamma1*id02 + gamma2*pa30r
+  pa30r ~ beta1*id02
+# Exogeneous variances
+  id02 ~~ phi1*id02
+# Error variances
+  px06  ~~ psi1*px06
+  pa30r ~~ psi2*pa30r
+# Effects
+  dir := gamma1
+  ind := gamma2*beta1
+  tot := gamma1 + gamma2*beta1
+'
+mm1.fit <- sem(model = mm1, data = df, estimator = "ML")
+summary(mm1.fit)
+```
+
+From this, we see the z-value for the indirect effect is exactly the same as the t-statistic we calculated with the Sobel Test above, keeping in mind that with about > 120 degrees of freedom, the t-distribution converges to the z-distribution. 
+
+## Mediation vs. multivariate regression models 
+
+Note that the mediation model is identical to the multivariate regression we ran previously. 
+
+```{r}
+# Mulivariate regression model 
+rm2 <- '
+px06 ~ gamma1*id02 + gamma2*pa30r
+'
+rm2.fit <- sem(model = rm2, data = df, estimator = "ML")
+summary(rm2.fit)
+```
+
+This is because though it may not be obvious, both models are essentially the same. Note that we can always express the covariance between two variables in terms of a regression coefficient. Say we were interested in the covariance between social class and populism, which we could call $x_{1}, x_{2}$. Then we can write the covariance in terms of a regression of $x_{2}$ on $x_{1}$, 
+\begin{align}
+\Cov(x_{2}, x_{1}) & = \Cov(\gamma_{2} x_{1} + \zeta_{2}, x_{1}) \\
+ & = \gamma_{2}\Var(x_{1}).
+\end{align}
+ 
+And further, if we have the multivariate regression model, then we have 
+\begin{align}
+\Cov(y, x_{1}) & = \Cov(\gamma_{1} x_{1} + \beta_{1} x_{2} + \zeta_{1}, x_{1}) \\
+ & = \gamma_{1}\Var(x_{1}) + \beta_{1}\Cov(x_{2}, x_{1}) \\
+\gamma_{1} & = \frac{\Cov(y, x_{1}) - \beta_{1}\Cov(x_{2}, x_{1})}{\Var(x_{1})}
+\end{align}
+
+which is the same as the mediation model, 
+\begin{align}
+\Cov(y, x_{1}) & = \Cov(\gamma_{1} x_{1} + \beta_{1}x_{2} + \zeta_{1}, x_{1}) \\
+ & = \gamma_{1}\Var(x_{1}) + \beta_{1}\Cov(x_{2}, x_{1}) \\
+ & = \gamma_{1}\Var(x_{1}) + \beta_{1}\Cov(\gamma_{2}x_{1} + \zeta_{2}, x_{1}) \\
+ & = \gamma_{1}\Var(x_{1}) + \beta_{1}\gamma_{2}\Var(x_{1}) \\
+\gamma_{1} & = \frac{\Cov(y, x_{1}) - \beta_{1}[\gamma_{2}\Var(x_{1})]}{\Var(x_{1})}
+\end{align}
+
+since we said above that $\Cov(x_{2}, x_{1}) = \gamma_{2}\Var(x_{1})$. 
+
+So, what is the advantage of mediation models if multivariate regression achieves the exact same thing? There are several. First, if we begin to look at larger chains of effects, e.g., $x \rightarrow w \rightarrow z \rightarrow y$, then the equivalence breaks down, because the multivariate model is much more general, allowing each covariate to affect the dependent variable while controlling for the covariance between the covariates, while the mediation model places strong restrictions on the model, i.e., that the only effect of, say, $x$ on $y$ is the mediated path over $w$ and $z$ and there are no effects over and above this. 
+
+# Likelihood ratio test 
+
+We say in the previous sections that the populist sentiment is a partial mediator of the effect of class on xenophobia. There is a bivariate association between class and xenophobia, and the direct effect remains in the mediation model where we model the path over populism as well. The overall indirect effect was shown to be significant and negative, as seen from the SEM as well as the Sobel Test. 
+
+Another way to test the existence of the mediator effect is to essentially compare competing models. Say, instead of the mediation model we have been looking at until now, we believed the following model was appropriate: 
+
+\begin{figure}[H]
+\centering
+\caption{Alternative theoretical model}
+\begin{tikzpicture}[node distance={25mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[man] (class) {class};
+\node[man] (anom) [below right of=class] {populism};
+\node[man] (xeno) [above right of=anom] {xenophobia};
+\node[err] (phan) [right =5mm of xeno] {};
+\node[err] (phan2) [right =5mm of anom] {};
+\node[err] (e1) [above =5mm of phan] {$\zeta_{1}$};
+\node[err] (e2) [below =5mm of phan2] {$\zeta_{2}$};
+\draw[->] (e1) -- node[midway, above] {} (xeno);
+\draw[->] (e2) -- node[midway, above] {} (anom);
+\draw[->] (class) -- node[midway, below] {$\gamma_{2}$} (anom);
+\draw[->] (anom) -- node[midway, below] {$\beta_{1}$} (xeno);
+\draw[<->] (e1.90) arc (0:264:3.5mm);
+\draw[<->] (e2.-90) arc (0:-264:3.5mm);
+\end{tikzpicture}
+\label{fig:path1}
+\end{figure}
+
+In this theoretical model, we state our belief a priori that populism fully mediates the effect of class on xenophobia by fixing the direct path to zero, note that the path does not exist in the diagram. 
+
+What we are doing here is *placing a constraint* on the model, i.e., by constraining $\gamma_{1}$ to zero. What this does is free up one degree of freedom: we have three observed variances and three observed covariance for six pieces of observed information, but we only now have to estimate five parameters: the variance of class, the error variances of populism and xenophobia, and the two effects, $\gamma_{2}$ and $\beta_{1}$. 
+
+This means we can *test* whether this constraint is compatible with the data, or not. Remember, the models we have seen up until now have been *just-identified* or *saturated* with exactly zero degrees of freedom. Such models always result in a model-implied covariance matrix that exactly replicates the observed covariance matrix. Placing a constraint on the model means our model is *over-identified*, here with one degree of freedom, which opens up the possibility that the model does not fit perfectly. 
+
+We will discuss fit extensively in the future, but just know that chi square is a measure of the discrepancy between the model-implied and the observed covariance matrix. It is equal to zero when the model-implied exactly matches the observed matrix, and it is positive when there is mismatch. The larger chi square (though there is no upper bound, so it is difficult to say what is 'large'), the larger the degree of misfit. So, we say our null hypothesis is that the two models, the one without the constraint, and the one with the constraint, fit equally well. If this were the case, then the direct effect of class on xenophobia is *redundant*, including it in the model does not improve fit. We can state this in terms of chi square, where 
+\begin{align}
+\text{H}_{0} & : \chi^{2}_{1} = \chi^{2}_{2}
+\end{align}
+
+where say $\chi^{2}_{1}$ is the fit of the initial model which includes the direct effect and $\chi^{2}_{2}$ is the fit of the model without the effect. 
+
+Of course, in the real world, the fit of the models will never be exactly the same, so we want to know whether the difference we observe is likely systematic, or due simply to measurement error. In other words, even if the population effect of class on xenophobia was zero, the observed effect would not be exactly zero, and we want to quantify *whether the observed effect is significantly different than zero*.
+
+So, the alternative hypothesis is
+\begin{align}
+\text{H}_{1} & : \chi^{2}_{1} < \chi^{2}_{2}
+\end{align}
+
+where we can be specific and test whether $\chi^{2}_{2}$ is larger than $\chi^{2}_{1}$ because $\chi^{2}_{1} = 0$ and chi square cannot be a negative number, so $\chi^{2}_{2}$ can only either be greater than or equal to it. 
+
+The so-called *likelihood ratio test* or *chi square difference test* calculates the difference in chi square between *nested* models, and puts this difference into relation with the difference in degrees of freedom, and then calculates whether the difference is statistically significant, or not. Nested models refer to models in which the variables involved are the same but one or more parameter is constrained in one and unconstrained in the other. If the test is significant, then we reject the null hypothesis and conclude that the second model fits more poorly than the first, and thus constraining the direct effect to zero is non consistent with the data. 
+
+To conduct the test, we first need to estimate the alternative model. In it, we constrain the effect of `id02` to zero by premultiplying the variable by zero, i.e., `px06 ~ 0*id02`. We could obviously just leave the variable out in the equation for `px06`, as well. 
+
+```{r}
+# Alternative mediation model 
+mm2 <- '
+# Regressions
+  px06 ~ 0*id02 + gamma2*pa30r
+  pa30r ~ beta1*id02
+# Exogeneous variances
+  id02 ~~ phi1*id02
+# Error variances
+  px06  ~~ psi1*px06
+  pa30r ~~ psi2*pa30r
+'
+mm2.fit <- sem(model = mm2, data = df, estimator = "ML")
+summary(mm2.fit)
+```
+
+From the output, we see the alternative model indeed has 1 degree of freedom, with a chi square value of 125.401. Chi square is obviously not zero, but we want to test whether what we observe is statistically significantly different from zero. 
+
+Notice $\hat{\gamma}^{M2}_{2} = 0.534^{***} \ (0.024)$ (M2 for 'model 2', the alternative model), the effect of populism on xenophobia is substantially larger than in the initial model, where $\hat{\gamma}^{M1}_{2} = 0.462^{***} \ (0.024)$, which shows that the choice of whether to include the direct effect or not is not trivial: the way we specify our model has an effect on the substantive interpretation of the effects and a misspecified model can lead to incorrect conclusions.^[From the previous section, we know that this simple mediation model is identical to the multivariate model, and that the partial effect of class on xenophobia, holding populism constant, is significant, so we knew already that the model without the partial effect specified would fit substantially worse.]
+
+We perform a likelihood ratio or chi square test using the `anova()` function in `R`, where we plug in the two fitted models. The order is irrelevant because the function will automatically determine which model has fewer degrees of freedom and list it first. 
+
+```{r}
+# Likelihood ratio test
+anova(mm1.fit, mm2.fit)
+```
+
+In this case the chi square difference is simply the chi square of the second model since it was zero in the first. This is due to one degree of freedom difference between the two models and the chi square difference is significant beyond the 0.001 level. This means that if the two models were equal, i.e., $\chi_{1}^{2} = \chi^{2}_{2}$, then the chance of nevertheless observing such a difference in chi square statistics would be extremely low. 
+
+Based on this, we would reject the null hypothesis and accept the alternative hypothesis that the models do not fit equally well, and that constraining the direct effect to zero leads to significant misfit. 
+
+# Mean structure 
+
+So far, we have been looking at models of mean-centered data. In doing so, we were able to ignore the intercepts and most SEM software fits the model to the data by first mean-centering them by default. In most applications, the intercepts are of little interest, but there are instances where they can be the focus. For example, in group comparisons, we might want to compare the baseline levels of some observed or latent concept, so we would need to bring the mean structure back in. 
+
+Consider the linear regression model with an intercept
+\begin{align}
+y & = \beta_{0} + \beta_{1}x + \epsilon 
+\end{align}
+
+where, in front of $\beta_{0}$ is an implicit 1, a constant. 
+
+In the mean-centered models, it was unproblematic to assume the expectation of the error is zero, i.e., $\E(\zeta_{k}) = 0$, since if all the independent variables are mean-centered, then the intercept works out to zero as well. For example, in the bivariate regression case, we say $\beta_{0} = \bar{y} - \beta_{1}\bar{x} = 0 - \beta_{1}\cdot 0 = 0$. When we do not use mean-centered data, we can still assume the expectation of the error is zero. Take the simple linear regression model from above without an intercept but with variables that are *not mean-centered*: 
+\begin{align}
+y & = \beta_{1}x + \epsilon \\
+ & = \beta_{1}x + \epsilon + \E(\epsilon) - \E(\epsilon) \\
+ & = \E(\epsilon) + \beta_{1}x + \epsilon - \E(\epsilon) \\
+ & = \beta_{0}^{*} + \beta_{1}x + \epsilon^{*}
+\end{align}
+
+where we have simply defined $\beta_{0}^{*} = \E(\epsilon)$ and $\epsilon^{*} = \epsilon - \E(\epsilon)$, so that the intercept 'absorbs' the expectation of the error and the expectation itself is mean-centered to have a mean of zero. We just omit the stars and state that the error has an unconditional expectation of zero. 
+
+In our mediation model, we can bring the means in, as well. We usually avoid the notation $\beta_{0}$ because we want to save the subscript in order to reference the dependent variable, so we can use $\tau_{1}, \tau_{2}$, etc. 
+\begin{align}
+y_{1} & = \tau_{1} + \beta_{1}y_{1} + \gamma_{1}x_{1} + \zeta_{1} \\
+y_{2} & = \tau_{2} + \gamma_{2}x_{1} + \zeta_{2}
+\end{align}
+
+where $\E(\zeta_{1}) = \E(\zeta_{2}) = 0$. 
+
+In matrix notation, we could write 
+\begin{align}
+\bm{y} & = \bm{\tau} + \bm{B}\bm{y} + \bm{B}\bm{x} + \bm{\zeta} \\
+\begin{bmatrix} y_{1} \\ y_{2} \end{bmatrix} & = 
+\begin{bmatrix} \tau_{1} \\ \tau_{2} \end{bmatrix} + 
+\begin{bmatrix} 0 & \beta_{1} \\ 0 & 0 \end{bmatrix}
+\begin{bmatrix} y_{1} \\ y_{2} \end{bmatrix} + 
+\begin{bmatrix} \gamma_{1} \\ \gamma_{2} \end{bmatrix}
+\begin{bmatrix} x_{1} \end{bmatrix} + 
+\begin{bmatrix} \zeta_{1} \\ \zeta_{2} \end{bmatrix}.
+\end{align}
+
+In `lavaan`, we can bring the means in by simply adding a constant to the regressions. 
+
+```{r}
+# Mediation model with mean structure
+mm1b <- '
+# Regressions
+  px06 ~ 1 + gamma1*id02 + gamma2*pa30r
+  pa30r ~ 1 + beta1*id02
+  id02 ~ 1
+# Exogeneous variances
+  id02 ~~ phi1*id02
+# Error variances
+  px06  ~~ psi1*px06
+  pa30r ~~ psi2*pa30r
+# Effects
+  dir := gamma1
+  ind := gamma2*beta1
+  tot := gamma1 + gamma2*beta1
+'
+mm1b.fit <- sem(model = mm1b, data = df, estimator = "ML")
+summary(mm1b.fit)
+```
+
+Notice the line `id02 ~ 1`: this is how we express exogenous variables, i.e., 
+\begin{align}
+x_{1} & = \tau_{x_{1}} + \delta_{1}
+\end{align}
+
+where $\E(\delta_{1}) = 0$. In other words, we say that an exogenous variable can be expressed in terms of the unconditional mean^[The unconditional mean for $x_{1}$ is $\E(x_{1}) = \tau_{x_{1}} + \E(\delta_{1}) = \tau_{x_{1}}$.] and the deviations around that mean. 
+
+There is a shortcut for 'turning on' the mean structure in `lavaan`. Instead of regressing the endogenous and exogenous variables on a constant, we can leave the syntax and simply add `meanstructure = TRUE` to the fitting function: 
+
+```{r}
+mm1.fit <- sem(model = mm1, data = df, estimator = "ML", meanstructure = TRUE)
+summary(mm1.fit)
+```
+
+Notice as well that the degrees of freedom have not changed compared to the model without the mean structure. This may seem strange because we are estimating three extra parameters, the intercepts of both endogenous variables and the unconditional mean of the exogenous variable. However, *we gained just as many new pieces of information*, i.e., the observed mean vector. 
+
+In other words, the sample statistics we base our model on now consist of the mean vector and the covariance matrix. We sometimes call the mean vector $\bm{o}$ and so our observed information is comprised of:
+\begin{align}
+\bm{o} = \begin{bmatrix} \bar{y}_{1} \\ \bar{y}_{2} \\ \bar{x}_{1} \end{bmatrix}, & \ 
+\bm{S} = \begin{bmatrix} \var(y_{1}) & & \\ \cov(y_{2}, y_{1}) & \var(y_{2}) & \\ \cov(x_{1}, y_{1}) & \cov(x_{1}, y_{2}) & \var(x_{1}) \end{bmatrix}.
+\end{align}
+
+In path diagrams, we sometimes show the mean structure with a 1 enclosed in a triangle pointing to the variables for which a mean/intercept is being estimated, as shown in Figure \ref{fig:path-mean}.
+
+\begin{figure}[H]
+\centering
+\caption{Path diagram with mean structure}
+\begin{tikzpicture}[node distance={25mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}, tri/.style = {draw, regular polygon, regular polygon sides=3, minimum size=0.5cm}]
+\node[man] (class) {class};
+\node[man] (anom) [below right of=class] {populism};
+\node[man] (xeno) [above right of=anom] {xenophobia};
+\node[err] (phan) [right =5mm of xeno] {};
+\node[err] (phan2) [right =5mm of anom] {};
+\node[err] (e1) [above =5mm of phan] {$\zeta_{1}$};
+\node[err] (e2) [below =5mm of phan2] {$\zeta_{2}$};
+\draw[->] (e1) -- node[midway, above] {} (xeno);
+\draw[->] (e2) -- node[midway, above] {} (anom);
+\draw[->] (class) -- node[midway, above] {$\gamma_{1}$} (xeno);
+\draw[->] (class) -- node[midway, below] {$\gamma_{2}$} (anom);
+\draw[->] (anom) -- node[midway, below] {$\beta_{1}$} (xeno);
+\draw[<->] (e1.90) arc (0:264:3.5mm);
+\draw[<->] (e2.-90) arc (0:-264:3.5mm);
+\node[tri] (1) [above right of=class] {\footnotesize 1};
+\draw[->] (1) -- node[midway, left] {$\tau_{x_{1}}$} (class);
+\draw[->] (1) -- node[near start, left] {$\tau_{y_{2}}$} (anom);
+\draw[->] (1) -- node[midway, right] {$\tau_{y_{1}}$} (xeno);
+\end{tikzpicture}
+\label{fig:path-mean}
+\end{figure}
+
+\clearpage 
+
+# References 

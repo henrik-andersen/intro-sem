@@ -1,0 +1,1039 @@
+---
+title: "Introduction to Structural Equation Modeling: Linear Regression"
+author: "Henrik Kenneth Andersen"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output: pdf_document
+header-includes:
+   - \usepackage{booktabs}
+   - \usepackage{threeparttable}
+   - \usepackage{tikz}
+   - \usetikzlibrary{positioning}
+   - \usetikzlibrary{calc}
+   - \usepackage{float}
+   - \usepackage{mathtools}
+   - \usepackage{amsfonts}
+   - \mathtoolsset{showonlyrefs}
+   - \usepackage{subfig}
+   - \usepackage{bm}
+   - \DeclareMathOperator{\E}{\mathbb{E}}
+   - \DeclareMathOperator{\Var}{\mathrm{Var}}
+   - \DeclareMathOperator{\Cov}{\mathrm{Cov}}
+   - \DeclareMathOperator{\var}{\mathrm{var}}
+   - \DeclareMathOperator{\cov}{\mathrm{cov}}
+   - \DeclareMathOperator{\Cor}{\mathrm{Cor}}
+   - \DeclareMathOperator{\tr}{tr}
+   - \DeclareMathOperator{\sd}{\mathrm{sd}}
+link-citations: yes
+linkcolor: blue
+bibliography: "../references.bib"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(Rcpp)
+```
+
+```{r script-hooks, echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+library(knitr)
+
+# Script hook for printing only certain lines
+hook_output <- knit_hooks$get("output")
+knit_hooks$set(output = function(x, options) {
+  lines <- options$output.lines
+  if (is.null(lines)) {
+    return(hook_output(x, options))  # pass to default hook
+  }
+  x <- unlist(strsplit(x, "\n"))
+  more <- "..."
+  if (length(lines)==1) {        # first n lines
+    if (length(x) > lines) {
+      # truncate the output, but add ....
+      x <- c(head(x, lines), more)
+    }
+  } else {
+    x <- c(if (abs(lines[1])>1) more else NULL, 
+           x[lines], 
+           if (length(x)>lines[abs(length(lines))]) more else NULL
+    )
+  }
+  # paste these lines together
+  x <- paste(c(x, ""), collapse = "\n")
+  hook_output(x, options)
+})
+
+# From: https://community.rstudio.com/t/showing-only-the-first-few-lines-of-the-results-of-a-code-chunk/6963/2
+# Retrieved on: 26.05.2020
+```
+
+
+# Linear regression in SEM 
+
+Let us first look at a simple linear regression model in SEM. This will allow us to examine how SEM works in a relatively simple setting before moving on to more complex models. 
+
+We will use an example inspired by @Reinecke2010, who looked at the effect of social class and feelings of anomia on xenophobia. They argue that those with a higher social class are less xenophobic, on average, perhaps due to their higher levels of education, which is associated with openness, liberalness, etc. Anomia, on the other hand, describes feelings of isolation and disorientation. Those experiencing anomia might distrust the unfamiliar and blame 'outsiders' for causing their 'ingroup' to be devalued. 
+
+However, we will modify the model by replacing anomia with populist sentiment, which could arguably be seen as a symptom of anomia. We do so because the anomia scale in the ALLBUS 2018 dataset is measured dichotomously. Dichotomous variables can easily be included in SEMs, but the theoretical motivation and method is too complex to focus on in this course.^[Roughly speaking, in an SEM, when we want to treat dichotomous or ordinal variables as dependent variables (e.g., as indicators of latent variables) we assume there are (continuous) normally distributed variables underlying these 'coarse' measures. We use the observed ordinal or dichotomous variable to infer the latent continuous variable and model the effects at the level of the latent variable. The link between the underlying latent variable and the ordinal or dichotomous 'indicator' is either a logic or probit function.] 
+
+We could write the model as 
+\begin{align}
+\text{xeno} & = \beta_{0} + \beta_{1}\text{class} + \beta_{2}\text{populism} + \epsilon
+\end{align}
+
+where $\beta_{0}$ is the intercept, i.e., the expected value of xenophobia when the predictors both take on the value of zero. $\beta_{1}$ and $\beta_{2}$ are the regression coefficients that link social class and populism, respectively, to xenophobia. They give the expected change in xenophobia per unit increase in either social class or populism. $\epsilon$ is the error term that encompasses all of the other unobserved factors influencing xenophobia. 
+
+We will assume for now that the variables of interest $\{\text{xeno}, \text{class}, \text{populism}\}$ are *mean-centered*. In doing so, we can ignore the intercept. Further, we will write the model more abstractly as
+\begin{align}
+y & = \beta_{1}x_{1} + \beta_{2}x_{2} + \epsilon
+\end{align}
+
+where we assume: 
+
+- linearity: the effects of the independent variables are constant and additive
+- random sampling: ensures $\E(\epsilon_{i}\epsilon_{j}) = 0, \ i \ne j$, i.e., the error of one unit tells us nothing about another unit's errors on average
+- no perfect multicollinearity: the independent variables are not linear combinations of each other and are not constants
+- zero conditional mean: the covariates are mean independent and thus also uncorrelated with the error, $\E(\epsilon | x_{1}, x_{2}) = \E(\epsilon) = 0$
+- homoskedasticity: constant variance of the error, $\Var(\epsilon | x_{1}, x_{2}) = \Var(\epsilon) = \sigma^{2}_{\epsilon}$
+- normally distributed error: the unexplained portion of the dependent variable is normally distributed, $\epsilon \sim N(0, \sigma^{2}_{\epsilon})$
+
+which can be succinctly summarized as 
+\begin{align}
+y | x_{1}, x_{2} & \sim N(\beta_{1}x_{1} + \beta_{2}x_{2}, \sigma_{\epsilon}^{2}), \\
+\epsilon & \sim N(0, \sigma^{2}_{\epsilon}).
+\end{align}
+
+## Path diagrams
+
+In SEM, we like to use *path diagrams* to represent our models. It may seem unnecessary here, because everyone knows what a multivariate regression model is and 'looks like', but it will help us to get into the habit of representing our models both as equations and path diagrams. 
+
+\begin{figure}
+\centering
+\caption{Path model, multivariate regression model}
+\label{fig:measmod}
+\begin{tikzpicture}[node distance={15mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[man] (x1) {$x_{1}$};
+\node[man] (x2) [below = 10mm of x1] {$x_{2}$}; 
+\node[man] (y) [right =20mm of x1] {$y$}; 
+\node[err] (e) [above right of=y] {$\epsilon$};
+\draw[->] (x1) -- node[midway, above] {$\beta_{1}$} (y);
+\draw[->] (x2) -- node[midway, below] {$\beta_{2}$} (y);
+\draw[->] (e) -- node[midway, above] {} (y);
+%\draw[<->] (x1.-90) arc (0:-264:2.6mm);
+%\draw[<->] (x2.-90) arc (0:-264:2.6mm);
+%\draw[<->] (e.north) arc (0:264:2.6mm);
+\path[<->] (x1.west) edge[bend right] node[left] {} (x2.west); 
+\end{tikzpicture}
+\end{figure}
+
+We use squares or rectangles to represent observed or 'manifest' variables and circles to represent unobserved or 'latent' variables (which we will introduce later). One-headed arrows represent an effect of one variable on another variable, and two-headed arrows represent covariances or correlations. The error, here $\epsilon$ is usually represented unenclosed by any circle or square. The implicit regression coefficient for the error is 1.0. Table \ref{tab:path-diag} gives an overview of the path diagram notation. 
+
+Note that the two independent variables, $x_{1}$ and $x_{2}$, are shown to *covary*. This is because we of course want the partial effects of class on xenophobia, holding populism constant, and vice versa. If we say $y = \beta_{1}x_{1} + \beta_{2}x_{2} + \epsilon$, then by covariance algebra, we see that the effect of, say, $\beta_{1}$ is given by 
+\begin{align}
+\Cov(y, x_{1}) & = \Cov(\beta_{1}x_{1} + \beta_{2}x_{2} + \epsilon, x_{1}) \\
+ & = \beta_{1}\Var(x_{1}) + \beta_{2}\Cov(x_{1}, x_{2}) \\
+\beta_{1} & = \frac{\Cov(y, x_{1}) - \beta_{2}\Cov(x_{1},x_{2})}{\Var(x_{1})}
+\end{align}
+since $\Cov(x_{1},\epsilon) = 0$, by assumption. Obviously, the estimate for $\beta_{1}$ depends on whether $\Cov(x_{1},x_{2})$ equals zero, or not. By allowing the independent variables to correlate, we get the partial effect of $x_{1}$ on $y$. If we were to assume the covariance was zero, we would have just $(\Cov(y, x_{1}) - \beta_{2}\cdot 0) / \Var(x_{1})$, which is the marginal effect. 
+
+There is some debate as to whether to display the covariance/correlation between model covariates, however, because in a regular regression model in SEM, the variances and covariances of the observed independent variables are set to the sample estimates. They are not 'estimated' like the error variance for $\epsilon$ is, but more on that later. 
+
+\begin{table}
+\centering
+\caption{Path diagram symbols and notation} \label{tab:path-diag}
+\begin{tabular}{c l}
+\toprule
+Symbol & Explanation \\
+\midrule
+\begin{tikzpicture}[node distance={10mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[man] (x1) [] {$x$};
+\end{tikzpicture} & 
+Observed or "manifest" variable \\
+\midrule
+\begin{tikzpicture}[node distance={10mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[lat] (z) [] {$\eta$};
+\end{tikzpicture} & 
+Unobserved or "latent" variable \\
+\midrule
+\begin{tikzpicture}[node distance={10mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[err] (x1) [] {};
+\node[err] (x2) [right of=x1] {};
+\draw[->] (x1) -- node[midway] {} (x2);
+\end{tikzpicture} & 
+Effect; regression or factor loading \\
+\midrule
+\begin{tikzpicture}[node distance={10mm}, lat/.style = {draw, circle}, man/.style = {draw, rectangle}, err/.style = {draw=white!100, circle}]
+\node[err] (x1) [] {};
+\node[err] (x2) [right of=x1] {};
+\draw[<->, bend right] (x1) -- node[midway] {} (x2);
+\end{tikzpicture} & 
+Covariance or correlation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+# The logic of SEM 
+
+To discuss the logic of SEM, let us look at an even simpler model (we will come back to the xenophobia example shortly): 
+\begin{align}
+y & = \beta_{1}x + \epsilon
+\end{align}
+
+where both $x$ and $y$ have been mean-centered.^[This means that $\frac{1}{n}\sum_{i=1}^{n}(y_{i} - \beta_{0} - \beta_{1}x_{i}) = 0 \implies \hat{\beta}_{0} = \bar{y} - \hat{\beta}_{1}\bar{x} = 0$, since by mean-centering, $\bar{y} = \bar{x} = 0$.] We could estimate this model by OLS, where from the so-called first order conditions, 
+\begin{align}
+\E(x\epsilon) & = \E(x(y - \beta_{1}x)) = 0 \\
+\E(\epsilon) & = \E(y - \beta_{1}x) = 0
+\end{align}
+
+and for a given sample, we would could use the method of moments approach and solve to see 
+\begin{align}
+\frac{1}{n}\sum_{i=1}^{n}x_{i}(y_{i} - \beta_{1}x_{i}) & = 0 \\
+\frac{1}{n}\sum_{i=1}^{n}x_{i}y_{i} - \beta_{1}\frac{1}{n}\sum_{i=1}^{n}x_{i}^{2} & = 0 \\
+\beta_{1}\frac{1}{n}\sum_{i=1}^{n}x_{i}^{2} & = \frac{1}{n}\sum_{i=1}^{n}x_{i}y_{i} \\
+\hat{\beta}_{1} & = \frac{\frac{1}{n}\sum_{i=1}^{n}x_{i}y_{i}}{\frac{1}{n}\sum_{i=1}^{n}x_{i}^{2}}.
+\end{align}
+
+The logic of SEM is more complicated than this, and it will seem unnecessarily so for such a simple model. But we will see that the framework allows for a great deal of flexibility, making it possible to estimate complicated models with latent variables and numerous dependent variables. 
+
+In our simple model, we have two observed variables, $x$ and $y$. We assume there is a *population covariance matrix*, which we call $\bm{\Sigma}$ (Sigma): 
+\begin{align}
+\bm{\Sigma} & = 
+\begin{bmatrix} 
+\Var(y) & \Cov(y, x) \\
+\Cov(x, y) & \Var(y)
+\end{bmatrix}.
+\end{align}
+
+We assume that our model, $y = \beta_{1}x + \epsilon$ accurately describes the population data generating process. We translate our model into the so-called *model-implied covariance matrix*, which is a function of the unknown parameters, $\bm{\theta} = (\beta_{1}, \phi, \psi)$ where $\phi = \sigma^{2}_{x}$ is the variance of the independent variable $x$, and $\psi = \sigma^{2}_{\epsilon}$ is the unexplained variance of $y$. 
+
+Based on our model, using covariance algebra, we have 
+\begin{align}
+\Var(y) & = \Var(\beta_{1}x + \epsilon) \\
+ & = \beta_{1}^{2}\Var(x) + \Var(\epsilon) \\
+ & = \beta_{1}^{2}\phi + \psi \\
+\Cov(x, y) & = \Cov(x, \beta_{1}x + \epsilon) \\
+ & = \beta_{1}\Cov(x, x) + \Cov(x, \epsilon) \\
+ & = \beta_{1}\phi \\
+\Var(x) & = \Var(x) \\
+ & = \phi
+\end{align}
+
+since $\E(x\epsilon) = \Cov(x, \epsilon) = 0$. 
+
+--- 
+
+## Short excurse on covariance algebra
+
+Covariance and variance are defined as [@Bollen1989, p. 21]:
+\begin{align}
+\Cov(x_{1}, x_{2}) & = \E[(x_{1} - \E(x_{1}))(x_{2} - \E(x_{2}))] \\
+ & = \E(x_{1}x_{2}) - \E(x_{1})\E(x_{2}), \\
+\Var(x_{1}) & = \Cov(x_{1},x_{1}) \\
+ & = \E[(x_{1} - \E(x_{1}))^{2}] \\
+ & = \E(x_{1}^{2}) - \E(x_{1})^{2}.
+\end{align}
+
+The sample analogs replace the expectation with the mean, so if we call the sample covariance and variance $\cov(\cdot)$ and $\var(\cdot)$, and the sample means $\bar{x}_{1}, \bar{x}_{2}$, etc., then
+\begin{align}
+\cov(x_{1}, x_{2}) & = \frac{1}{n - 1}\sum_{i=1}^{n}(x_{1i} - \bar{x}_{1})(x_{2i} - \bar{x}_{2}),  \\
+\var(x_{1}) & = \frac{1}{n - 1}\sum_{i=1}^{n}(x_{1i} - \bar{x}_{1i})^{2} \\
+\end{align}
+
+For mean-centered variables, these reduce to 
+\begin{align}
+\Cov(z_{1}, z_{2}) & = \E(z_{1}z_{2}) \\
+\cov(z_{1}, z_{2}) & = \frac{1}{n - 1}\sum_{i=1}^{n}z_{1i}z_{2i}, \\
+\Var(z_{1}) & = \E(z_{1}^{2}) \\
+\var(z_{1}) & = \frac{1}{n - 1}\sum_{i=1}^{n}z_{1i}^{2}
+\end{align}
+
+If $c$ is a constant, then
+\begin{align}
+\Cov(c, x_{1}) & = 0 \\
+\Cov(c x_{1}, x_{2}) & = c \Cov(x_{1}, x_{2}) \\
+\Var(c x_{1}) & = c^{2}\Var(x_{1}) \\
+\Cov(x_{1} + x_{2}, x_{3}) & = \Cov(x_{1}, x_{3}) + \Cov(x_{2}, x_{3}).
+\end{align}
+
+--- 
+
+We put these expressions into the model-implied coariance matrix, which we call $\bm{\Sigma}(\bm{\theta})$, 
+\begin{align}
+\bm{\Sigma}(\bm{\theta}) & = 
+\begin{bmatrix}
+\beta_{1}^{2}\phi + \psi & \beta_{1}\phi \\
+\beta_{1}\phi & \phi
+\end{bmatrix} 
+\end{align}
+ 
+and we set the population and the model-implied covariance matrix to be equal, since we assume our model accurately describes the population data generating process: 
+\begin{align}
+\bm{\Sigma} & = \bm{\Sigma}(\bm{\theta}) \\ 
+\begin{bmatrix} 
+\Var(y) & \Cov(y, x) \\
+\Cov(x, y) & \Var(y)
+\end{bmatrix} & = 
+\begin{bmatrix}
+\beta_{1}^{2}\phi + \psi & \beta_{1}\phi \\
+\beta_{1}\phi & \phi
+\end{bmatrix} 
+\end{align}
+
+Note, however, that we do not observe the population covariance matrix, but rather just a sample of it, so we switch it out for the sample covariance matrix, $\bm{S}$
+\begin{align}
+\bm{S} & = \bm{\Sigma}(\bm{\theta}) \\ 
+\begin{bmatrix} 
+\var(y) & \cov(y, x) \\
+\cov(x, y) & \var(y)
+\end{bmatrix} & = 
+\begin{bmatrix}
+\beta_{1}^{2}\phi + \psi & \beta_{1}\phi \\
+\beta_{1}\phi & \phi
+\end{bmatrix} 
+\end{align}
+
+where we can use $\var(\cdot)$ and $\cov(\cdot)$ (lower-case) to represent the sample analogs of the population parameters, $\Var(\cdot)$, $\Cov(\cdot)$. 
+
+Now, estimation means applying some rule to select the the values for $\beta_{1}$, $\phi$ and $\psi$. We call these the *estimates*, denoted $\hat{\beta}_{1}$, $\hat{\phi}$ and $\hat{\psi}$ and replace $\bm{\theta}$ with $\hat{\bm{\theta}}$:
+\begin{align}
+\bm{S} & = \bm{\Sigma}(\bm{\hat{\theta}}) \\ 
+\begin{bmatrix} 
+\var(y) & \cov(y, x) \\
+\cov(x, y) & \var(y)
+\end{bmatrix} & = 
+\begin{bmatrix}
+\hat{\beta}_{1}^{2}\hat{\phi} + \hat{\psi} & \hat{\beta}_{1}\hat{\phi} \\
+\hat{\beta}_{1}\hat{\phi} & \hat{\phi}
+\end{bmatrix} 
+\end{align}
+
+From here, we define the *residual matrix*, which we could call $\bm{R} = \bm{S} - \bm{\Sigma}(\hat{\bm{\theta}})$ 
+\begin{align}
+\bm{R} & = \bm{S} - \bm{\Sigma}(\hat{\bm{\theta}}) \\
+ & = \begin{bmatrix} 
+\var(y) & \cov(y, x) \\
+\cov(x, y) & \var(y)
+\end{bmatrix} -  
+\begin{bmatrix}
+\hat{\beta}_{1}^{2}\hat{\phi} + \hat{\psi} & \hat{\beta}_{1}\hat{\phi} \\
+\hat{\beta}_{1}\hat{\phi} & \hat{\phi}
+\end{bmatrix} 
+\end{align}
+
+and choose the unknown values as those that *minimize the discrepancy* between the observed and model-implied matrices. 
+
+## Estimation 
+
+There are a number of *estimators* available for SEM analyses. They can be seen as different approaches to achieving the goal of minimizing the discrepancy of the observed and model-implied matrices. 
+
+We say that for each estimator, there is a *fitting function*, $F$, that we would like to optimize (usually minimize). For example, the Unweighted Least Squares (ULS) estimator with its fitting function $F_{ULS}$ works on the logic of minimizing one-half the squared differences between the observed and model-implied matrices: 
+\begin{align}
+F_{ULS} & = \frac{1}{2}\tr[(\bm{S} - \bm{\Sigma}(\bm{\theta}))^{2}].
+\end{align}
+
+$F_{ULS}$ is an intuitive estimator because of the *obvious parallels to ordinary least squares*-based regression (only here we are minimizing the squared residuals defined as the elements of the residual matrix rather than the individual deviations from the predicted value). It also *does not require the normality assumption* on the observed variables for consistent estimates of $\bm{\theta}$. 
+
+The so-called *Generalized Least Squares* (GLS) estimator weights the elements of $\bm{S} - \bm{\Sigma}(\bm{\theta})$ according to their variances and covariances to correct for heteroskedasticity or autocorrelation. Its fitting function is given by
+\begin{align}
+F_{GLS} & = \frac{1}{2}\tr[([\bm{S} - \bm{\Sigma}(\bm{\theta})]\bm{W}^{-1})^{2}]
+\end{align}
+
+where $\bm{W}^{-1}$ is usually set to $\bm{S}^{-1}$, i.e., we are essentially dividing the elements of the residual matrix by the sample (co)variances before performing least squares. GLS reduces to ULS when $\bm{W}^{-1} = \bm{I}$, where $\bm{I}$ is the identity matrix with ones down the diagonal and zeros everywhere else. 
+
+However, *Maximum Likelihood* (ML) is the most widely used estimator. Its fitting function is
+\begin{align}
+F_{ML} & = \log |\bm{\Sigma}(\bm{\theta})| + \tr[\bm{S}\bm{\Sigma}^{-1}(\bm{\theta})] - \log |\bm{S}| - (p + q)
+\end{align}
+ 
+where $\log$ is the natural logarithm, $|\cdot|$ is the determinant, $\tr(\cdot)$ is the trace and $p$ is the number of dependent and $q$ is the number of independent observed variables.^[How the fitting functions are derived is not especially interesting nor is it important for this course. The ML fitting function comes from the multivariate normal distribution and the assumption of independent and identically distributed (i.i.d.) observations, see @Bollen1989, p. 107--111 and p. 131--134.]  
+
+Once we have chosen the estimator, we plug in the sample and model-implied matrices and take the first derivative with respect to each of the unknowns in $\bm{\theta}$. We set the derivative to zero and solve for the unknowns. Sometimes, like in the case of simple linear regression models, there are explicit solutions to the parameters that can be worked out algebraically.
+
+## A numeric example 
+
+Let us assume we have the simple model from above, $y = \beta_{1}x + \epsilon$ and we observe the following covariance matrix:
+\begin{align}
+\bm{S} & = \begin{bmatrix}
+11.88 & 6.13 \\
+6.13 & 4.05
+\end{bmatrix}
+\end{align}
+
+where $\var(y) = 11.88$, $\cov(y, x) = \cov(x, y) = 6.13$ and $\var(x) = 4.05$. 
+
+The unknown parameters are, again, $\bm{\theta} = (\beta_{1}, \phi, \psi)$, i.e., the regression coefficient, the variance of $x$ and the error variance. Normally, the variance of the observed independent variables, here $x$, is not estimated but rather set to the sample value. So, we would say $\hat{\phi} = 4.05$. 
+
+We find the respective estimates (ULS, GLS, ML, etc.) by taking the first partial derivative of the fitting functions with respect to each of the unknown parameters, setting the results to zero and solving. Taking the partial derivative means we are finding a function for the slope of the tangent line (or tangent plane in the multivariate case), the line that touches the function at just one point. When we set the slope of the tangent line to zero, we are looking for a horizontal line which indicates either a minimum or a maximum (because if the slope was not zero, it would imply the function was still increasing or decreasing). 
+
+The following code generates an example function and shows that the slope of the tangent line is given by the first derivative of the function. Setting the slope of the tangent line to zero tells us which unknown value produces an optimum. 
+
+```{r}
+library(ggplot2)
+
+# Some arbitrary function of x
+exfunc <- function(x) {
+  y <- 15 + 2 * x - 0.75 * x^2 
+  return(y)
+}
+
+# First derivative w.r.t. x is 2 - 1.5 * x 
+D(expression(15 + 2 * x - 0.75 * x^2 ), "x")
+
+# Solve for x 
+# 2 - 1.5x = 0
+# 1.5x     = 2
+# x        = 2 / 1.5
+# x        = 1.33
+# x = 1.33 maximizes the function
+
+# Make some data consistent with function, inputs chosen mostly arbitrarily 
+x <- seq(from = -5, to = 10, by = 0.2)
+# Outputs 
+y <- 15 + 2 * x - 0.75 * x^2 
+
+# Put the inputs and outputs in a temp dataframe
+dftemp <- data.frame(x, y)
+
+# Plot the function, show the tangent line with slope of zero
+ggplot(dftemp, aes(x = x, y = y)) + 
+  geom_point(shape = 1, size = 1) + 
+  geom_abline(intercept = exfunc(2 / 1.5), slope = 0, linetype = "dashed") + 
+  geom_vline(xintercept = 2 / 1.5, linetype = "dashed") + 
+  scale_y_continuous(limits = c(-40, 20), breaks = seq(-40, 20, 10)) 
+```
+
+--- 
+
+For ULS, we have
+\begin{align}
+F_{ULS} & = \frac{1}{2} \tr\bigg[\bigg(
+\begin{bmatrix} 
+11.88 & 6.13 \\
+6.13 & 4.05
+\end{bmatrix} - 
+\begin{bmatrix}
+\beta_{1}^{2}\phi + \psi & \beta_{1}\phi \\
+\beta_{1}\phi & \phi
+\end{bmatrix}
+\bigg)^{2}\bigg] \\
+ & = 
+\frac{1}{2}\tr\bigg[\bigg(
+\begin{bmatrix} 
+11.88 - \beta_{1}^{2}4.05 - \psi & 6.13 - \beta_{1}4.05 \\
+6.13 - \beta_{1}4.05 & 4.05 - 4.05
+\end{bmatrix}
+\bigg)^{2}\bigg]
+\end{align}
+
+since we are setting the model-implied variance of $x$ to the sample value, $\hat{\phi} = 4.05$. From here, we can take the first partial derivatives with respect to $\psi$ and $\beta$ and solve for each to get the ULS estimates. We could do this by hand, but it is much easier to use a symbolic algebra program, like `sympy` in `Python`:
+
+```{python, results="asis"}
+# Use symbolic algebra library sympy
+from sympy import * 
+
+# Symbols
+psi, beta = symbols('psi, beta')
+
+# Observed sample covariance matrix S
+S = Matrix([[11.88, 6.13], 
+            [6.13,  4.05]])
+            
+# Model-implied covariance matrix Sigma(theta)
+Sig = Matrix([[beta ** 2 * 4.05 + psi, beta * 4.05], 
+              [beta * 4.05,            4.05]])
+       
+# ULS fitting function              
+Fuls = 1 / 2 * trace((S - Sig) ** 2)
+
+# First partial derivative for beta
+dFulsdbeta = diff(Fuls, beta)
+print('$' + latex(dFulsdbeta) + '$')
+```
+
+
+```{python, results="asis"}
+# First partial derivative for psi
+dFulsdpsi = diff(Fuls, psi)
+print('$' + latex(dFulsdpsi) + '$')
+```
+
+```{python, results="asis"}
+# Solve for psi 
+print('$' + latex(solve(dFulsdpsi, psi)) + '$')
+```
+
+```{python, results="asis"}
+# Substitute solution for psi into derivative for beta
+dFulsdbeta = dFulsdbeta.subs(Symbol('psi'), 11.88 - beta ** 2 * 4.05)
+
+# Solve for beta 
+print('$' + latex(solve(dFulsdbeta, beta)) + '$')
+```
+
+```{python, results="asis"}
+# Solve for psi = 11.88 - 4.05 * beta ** 2
+11.88 - 4.05 * 1.51 ** 2
+```
+
+From this, we see that $\hat{\bm{\theta}}_{ULS} = (\hat{\beta}_{ULS} = 1.51, \hat{\psi}_{ULS} = 2.65)$. 
+
+The ML approach is actually rather easy to work out by hand. We have 
+\begin{align}
+F_{ML} & = \log |\bm{\Sigma}(\bm{\theta})| + \tr[\bm{S}\bm{\Sigma}^{-1}(\bm{\theta})] - \log |\bm{S}| - (p + q)
+\end{align}
+
+where we input the matrices from above, 
+\begin{align}
+F_{ML} & = \log\bigg| \begin{bmatrix} \beta^{2}\phi + \psi & \beta \phi \\ \beta \phi & \phi\end{bmatrix}\bigg| + \text{tr}\bigg[\begin{bmatrix} 11.88 & 6.13 \\ 6.13 & 4.05 \end{bmatrix} \begin{bmatrix} \beta^{2}\phi + \psi & \beta \phi \\ \beta \phi & \phi\end{bmatrix}^{-1}\bigg] - \log \bigg| \begin{bmatrix} 11.88 & 6.13 \\ 6.13 & 4.05 \end{bmatrix}\bigg| - (2) \\
+ & = \log(\phi \psi) + \frac{11.88}{\psi} + \frac{4.05\beta^{2}}{\psi} + \frac{4.05}{\phi} - 2\frac{6.13\beta}{\psi} - 10.54 - 2
+\end{align}
+
+and take the partial derivatives with respect to each and solve. For $\beta$, we have 
+\begin{align}
+\frac{\partial{F_{ML}}}{\partial{\beta}} & = \frac{8.1 \beta}{\psi} - \frac{12.26}{\psi} \\
+0 & = \frac{8.1 \beta}{\psi} - \frac{12.26}{\psi} \\
+\hat{\beta}_{ML} & = \frac{12.26}{8.1} = `r round(12.26 / 8.1, 2)` 
+\end{align}
+
+and for $\psi$, we have 
+\begin{align}
+\frac{\partial{F_{ML}}}{\partial{\psi}} & = \frac{12.26 \beta}{\psi^{2}} + \frac{1}{\psi} - \frac{4.05 \beta^{2}}{\psi^{2}} - \frac{11.88}{\psi^{2}} \\
+0 & = \frac{12.26 (1.51)}{\psi^{2}}\psi^{2} + \frac{1}{\psi}\psi^{2} - \frac{4.05 (1.51)^{2}}{\psi^{2}}\psi^{2} - \frac{11.88}{\psi^{2}}\psi^{2} \\
+\hat{\psi}_{ML} & = 2.65 
+\end{align}
+
+so we could write $\hat{\bm{\theta}}_{ML} = (\hat{\beta}_{ML} = 1.51, \hat{\psi}_{ML} = 2.65)$, which, in this case, are the same as the ULS estimates.
+
+## Numerical methods 
+
+For more complex models, however, there may not be explicit solutions. In those cases, SEM uses so-called *'numerical methods'* to find the minimum of the functions. These are iterative methods, i.e., we take some 'starting values' for the unknown parameters, call those $\bm{\theta}^{(1)}$, and then change them to some other values, $\bm{\theta}^{(2)}$, and then re-evaluate the fitting function. We do this until a minimum is reached; essentially the point after which the fitting function begins to no longer improve but become worse. @Bollen1989, p. 136--144 and @Ferron2007 discuss numerical solutions in more detail, but we can briefly look at it here. 
+
+Take the example used in @Bollen1989, p. 138 f.: say we had the model $y = x + \epsilon$ where $\phi = 1$, $\Cov(x, \epsilon) = 0$ and $\E(\epsilon) = 0$. Essentially, we are fixing the regression coefficient to 1.0 and letting the variance of the independent variable be set to the sample value, which in this example is also 1. 
+
+The observed covariance matrix is
+\begin{align}
+\bm{S} &= \begin{bmatrix}
+2 & 1 \\ 1 & 1
+\end{bmatrix}
+\end{align}
+
+and the model-implied covariance matrix is 
+\begin{align}
+\begin{bmatrix}
+1 + \psi & 1 \\ 1 & 1
+\end{bmatrix}
+\end{align}
+
+When we plug these into $F_{ML}$, and after some simplification, we get 
+\begin{align}
+F_{ML} & = \log(\hat{\psi}) + \hat{\psi}^{-1} - 1. 
+\end{align}
+
+The goal is to find a value for $\hat{\psi}$ that minimizes the fitting function. In this case, it is easy to see that plugging in 1 gives us exactly the observed covariance matrix, but say we wanted to use a numerical method instead.
+
+Note that $F_{ML}$ is a *function*, we put in an input, $\hat{\psi}^{(i)}$, and we get an output, $F_{ML}^{(i)}$, as shown in Figure \ref{fig:fittingfunc}. 
+
+```{r message=FALSE, warning=FALSE, fig.cap="\\label{fig:fittingfunc}Fitting function", out.width="60%", fig.align="center"}
+# Make the Fml fitting function
+Fml <- function(psi) {
+  Fmli <- log(psi) + psi^-1 - 1
+  return(Fmli)
+}
+
+# Values for psi from 0.1 to 10
+psi <- seq(from = 0.1, to = 10, by = 0.01)
+
+# Calculate Fml for each value of psi
+Fmli <- Fml(psi)
+
+# Put both into a dataframe for ggplot
+dftemp <- data.frame(Fmli, psi)
+
+# Plot the fitting function 
+library(ggplot2)
+ggplot(dftemp, aes(x = psi, y = Fmli)) + 
+  geom_point(shape = 1) + 
+  scale_x_continuous(limits = c(0, 10), breaks = seq(from = 0, to = 10, by = 0.5)) + 
+  scale_y_continuous(name = "Fml", limits = c(-1, 7), breaks = -1:7)
+```
+
+All this shows is that for every possible value of $\psi$ we can calculate the value of the fitting function, and we would take the value for $\hat{\psi}$ that minimizes the function. This is $\hat{\psi} = 1$, which is what we knew already from just looking at the covariance matrices.
+
+But the interesting thing about numerical methods is that we can basically start from any value, $\hat{\psi}^{(1)}$, note the fitting function, then plug in a second value, $\hat{\psi}^{(2)}$, again note the value of the fitting function and compare. We would then continue to do this until the fitting function was no longer improving but getting worse. 
+
+This raises at least three questions, however: 
+
+1. what values to start with?
+2. how to know which direction to begin searching in?
+3. how much to increase/decrease the next value to plug in?
+
+As for the first question, if we are estimating a complex model, we could start by breaking the model up into parts and estimating simple linear regressions. Then we could use those values as the starting values. Or, we could turn to the literature for plausible starting values. Often, the choice of starting values will not make or break the model, however. 
+
+Concerning the second question, notice that the first derivative of the fitting function gives us the *tangent line*, whose slope, or *gradient* tells us whether the function is increasing or decreasing at a given point. The first derivative of the function above is $\frac{1}{\psi} - \psi^{-2}$, which we can verify using `R`: 
+
+```{r}
+# Write Fml as an expression and use D() to get the derivative
+D(expression(log(psi) + psi^-1 - 1), "psi")
+```
+
+So, at, say, $\psi = 0.5$, the slope of the tangent line is $\frac{1}{0.5} - 0.5^{-2} = `r 1/0.5 - 0.5^-2`$. We can add this to the plot^[For those wondering, we know the line passes through $\psi = 0.5$, $F_{ML} = \log(\psi) + \psi^{-1} - 1 = `r round(log(0.5) + 0.5^-1 - 1, 2)`$ and the slope is $\partial{F_{ML}} / \partial{\psi} = 1 / 0.5 - 0.5^{-2} = `r round(1 / 0.5 - 0.5^-2, 2)`$, so the intercept follows the pattern of $-\beta x^{1} + y^{1} = -(-2)0.5 + 0.31 = `r round(2 * 0.5 + 0.31, 2)`$.] 
+
+```{r message=FALSE, warning=FALSE, fig.cap="\\label{fig:gradient}Fitting function (zoomed in) with gradient at $\\psi = 0.5$", out.width="60%", fig.align="center"}
+# Add the gradient at psi = 0.5 to the plot
+ggplot(dftemp, aes(x = psi, y = Fmli)) + 
+  geom_point(shape = 1, size = 0.5) + 
+  scale_x_continuous(limits = c(0, 2), breaks = seq(from = 0, to = 2, by = 0.1)) + 
+  scale_y_continuous(name = "Fml", limits = c(-1, 7), breaks = -1:7) + 
+  geom_abline(intercept = 1.31, slope = -2)
+```
+
+Our goal is to minimize $F_{ML}$, so if the gradient at the starting value is negative, like it is in this case, then it tells us we need to *increase* the value of $\hat{\psi}$. This will bring us closer to the minimum. If we had a positive gradient for our starting value and we were trying to minimize the function, it would tell us we need to go back by decreasing $\hat{\psi}$, because the minimum (or a minimum) is behind us, so to speak. The same goes in reverse for maximizing a function.   
+
+As for the third question, how much to increase the value we plug in from iteration to iteration, note that the slope of the gradient tells us how far away we are from the minimum. For a value of $\hat{\psi}$ that is far away from the minimum, the slope is very steep, see for example the red gradient in Figure \ref{fig:gradients}. The slope gets less steep the closer we get to the minimum, e.g., the blue gradient. The green gradient is not very steep either, but it is positive, so we know that we have gone too far. 
+
+```{r message=FALSE, warning=FALSE, fig.cap="\\label{fig:gradients}Fitting function with multiple gradients", out.width="60%", fig.align="center"}
+# Model the function again over range of psi values
+psi_vals <- seq(from = 0.1, to = 10, by = 0.1)
+fml_vals <- Fml(psi_vals)
+
+# Put the inputs and outputs into a dataframe
+dftemp1 <- data.frame(psi_vals, fml_vals)
+
+# Now select just three values for psi to plot the gradients
+psi_vals_select <- c(0.4, 0.9, 1.2)
+fml_vals_select <- Fml(psi_vals_select)
+
+# Get the slopes based on derivative, 1 / psi - psi^-2
+slope_vals_select <- 1 / psi_vals_select - psi_vals_select^-2
+# Work out the intercepts 
+int_vals_select <- -slope_vals_select * psi_vals_select + fml_vals_select
+
+# Put these slopes and intercepts into second temp df
+dftemp2 <- data.frame(slope_vals_select, int_vals_select)
+
+# Plot the function with the three gradients
+ggplot(dftemp1, aes(x = psi_vals, y = fml_vals)) + 
+  geom_point(size = 1, shape = 1) + 
+  geom_line() + 
+  scale_y_continuous(name = "Fml", limits = c(-1, 7), breaks = seq(-1, 7, 1)) +
+  scale_x_continuous(name = "phi", limits = c(0, 10), breaks = 0:10) + 
+  geom_abline(dftemp2, slope = slope_vals_select, intercept = int_vals_select, 
+              size = 1, color = c("red", "blue", "green")) 
+```
+
+The widely used *Newton-Raphson* algorithm for choosing the next value $\hat{\psi}^{(i + 1)}$ works by dividing the gradient of the current value, $\hat{\psi}^{(i)}$, by the second partial derivative, the *Hessian* and then subtracting that from the current value. More generally, when $\bm{\theta}$ contains more than one unknown parameter, we choose $\bm{\theta}^{(i+1)}$ by premultiplying the vector of gradients by the inverse of the Hessian matrix
+\begin{align}
+\hat{\bm{\theta}}^{(i+1)} & = \hat{\bm{\theta}}^{(i)} - \bigg[\frac{\partial^{2}{F_{ML}}}{\partial{\hat{\bm{\theta}}}\partial{\hat{\bm{\theta}}}^{\intercal}}\bigg]^{-1}\bigg[\frac{\partial{F_{ML}}}{\partial{\hat{\bm{\theta}}}}\bigg]
+\end{align}
+
+In our case, we have the function itself, 
+\begin{align}
+F_{ML} & = \log(\hat{\psi}) + \hat{\psi}^{-1} - 1
+\end{align}
+
+we have the first derivative
+\begin{align}
+\frac{\partial{F_{ML}}}{\partial{\psi}} & = \psi^{-1}(1 - \psi^{-1})
+\end{align}
+
+and the second partial derivative
+\begin{align}
+\frac{\partial^{2}{F_{ML}}}{\partial{\psi}^{2}} & = \frac{2 - \psi}{\psi^{3}}
+\end{align}
+
+and so when we put these together, we get 
+\begin{align}
+\hat{\psi}^{(i+1)} & = \hat{\psi}^{(i)} - \bigg[\frac{2 - \hat{\psi}^{(i)}}{(\hat{\psi}^{(i)})^{3}}\bigg]^{-1} [(\hat{\psi}^{(i)})^{-1}(1 - (\hat{\psi}^{(i)})^{-1})]
+\end{align}
+
+this looks ugly, but it is not that complicated. We just plug in our starting value and evaluate. Then use that result as the new starting value, so to speak, and continue until we no longer see any improvement. 
+
+```{r}
+# Newton-Raphson fuction 
+nr_func <- function(psi) {
+  psi_plus1 <- psi - ((2 - psi) / (psi^3))^-1 * (psi^-1 * (1 - psi^-1))
+  return(psi_plus1)
+}
+```
+
+Say we started at 0.5:
+
+```{r}
+nr_func(0.5)
+```
+
+after the first step, our new value would be 0.667. We plug this into the function
+
+```{r}
+nr_func(0.667)
+```
+
+We would continue this until we saw no further improvement: 
+
+```{r}
+nr_func(0.834)
+```
+
+```{r}
+nr_func(0.953)
+```
+
+```{r}
+nr_func(0.996)
+```
+
+which, we can see *converges* to the value we know to be correct based on the algebraic solution, i.e., $\hat{\psi} = 1$. SEM software set the break-off point in terms of the change in subsequent estimates. Moving from the first to the second iteration, the change was $0.834 - 0.667 = `r 0.834 - 0.667`$, from the second to the third it was $0.953 - 0.834 = `r 0.953 - 0.834`$, from the third to the fourth just $0.996 - 0.953 = `r 0.996 - 0.953`$ and from the fourth to the fifth $1 - 0.996 = `r 1 - 0.996`$. In the move from the second last to the last iteration shown here, we see basically no further improvement and we would stop the search. 
+
+## Maximum likelihood 
+
+Maximum likelihood is by far the most popular estimator used in SEM. One criticism you might have heard of ML is that it requires that the model variables are normally distributed. In this section, I will describe on a basic level why the assumption of normality is so important for SEM (compared to, say, OLS which also tends to assume normality but with a different motivation), what it pertains to and how one can treat the assumption in practice.
+
+When a continuous random variable is normally distributed, the probability of observing, say, $y_{i}$ is 
+\begin{align}
+\mathcal{P}(y_{i}) \sim \mathcal{N}(\mu,\sigma^{2}), \ \text{or} \\
+\mathcal{P}(y_{i}; \mu, \sigma^{2}) & = \frac{1}{\sqrt{2\pi\sigma^{2}}}\exp\bigg[-\frac{1}{2}\bigg(\frac{y_{i} - \mu}{\sigma}\bigg)^{2}\bigg].
+\end{align}
+
+In other words, the distribution can be fully characterized by its mean, $\mu$, and variance, $\sigma^{2}$. As such, for every possible value, we can calculate the exact probability of $y_{i}$. 
+
+```{r fig.cap="\\label{fig:prob-single-0-1}Probability distribution $y \\sim \\mathcal{N}(\\mu = 0, \\sigma = 1)$", out.width="60%", fig.align="center", echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+
+mu    <- 0
+sigma <- 1 
+
+dftemp <- data.frame(x = seq(from = -5, to = 5, by = 0.1), 
+                     y = dnorm(seq(from = -5, to = 5, by = 0.1), mean = mu, sd = sigma))
+
+ggplot(dftemp, aes(x = x, y = y)) +
+  geom_point(shape = 1) + 
+  scale_x_continuous(limits = c(-5, 5), breaks = -5:5) +
+  scale_y_continuous(limits = c(0, 0.4), breaks = seq(from = 0, to = 0.4, by = 0.05)) + 
+  xlab("y") + 
+  ylab("P(y)") + 
+  theme(text = element_text(size = 16)) + 
+  theme_classic()
+```
+
+For example, assuming the standard normal distribution, which is a special case of the normal distribution where $\mu = 0$ and $\sigma^{2} = 1$, shown in Figure \ref{fig:prob-single-0-1}, the probability of observing the value $0.75$ is
+\begin{align}
+\mathcal{P}(y_{i}; \mu, \sigma^{2}) & = \frac{1}{\sqrt{2\pi\sigma^{2}}}\exp\bigg[-\frac{1}{2}\bigg(\frac{y_{i} - \mu}{\sigma}\bigg)^{2}\bigg] \\
+\mathcal{P}(0.75; 0, 1) & = \frac{1}{\sqrt{2\pi(1)}}\exp\bigg[-\frac{1}{2}\bigg(\frac{0.75 - 0}{1}\bigg)^{2}\bigg] \\
+ & = `r round(dnorm(0.75, 0, 1), 2)`.
+\end{align}
+
+This is highlighted in Figure \ref{fig:prob-single-0-1-2} with the vertical line showing $y_{i} = 0.75$ and the horizontal line showing $\mathcal{P}(y_{i} = 0.75; \mu = 0, \sigma^{2} = 1)$. 
+
+```{r fig.cap="\\label{fig:prob-single-0-1-2}Probability distribution $y \\sim \\mathcal{N}(\\mu = 0, \\sigma = 1)$, $p(y_{i} = 0.75; \\mu = 0, \\sigma^{2} = 1)$", out.width="60%", fig.align="center", echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(dftemp, aes(x = x, y = y)) +
+  geom_point(shape = 1) + 
+  scale_x_continuous(limits = c(-5, 5), breaks = -5:5) +
+  scale_y_continuous(limits = c(0, 0.4), breaks = seq(from = 0, to = 0.4, by = 0.05)) + 
+  xlab("y") + 
+  ylab("P(y)") + 
+  theme(text = element_text(size = 16)) + 
+  theme_classic() + 
+  geom_vline(xintercept = 0.75) + 
+  geom_hline(yintercept = dnorm(0.75, 0, 1))
+```
+
+We say the *likelihood* of some set of parameters, $\bm{\theta}$, given some data is the same as the probability of having observed the data given those parameters. 
+
+However, when we use SEM, we are typically not interested in the marginal distribution of $y$, but rather the *conditional distribution*, given the model covariates. So, in our example from above, we have $y = \beta_{1}x_{1} + \beta_{2}x_{2} + \epsilon$ and we note that 
+\begin{align}
+\E(y | x_{1}, x_{2}) & = \E(\beta_{1}x_{1} + \beta_{2}x_{2} + \epsilon | x_{1}, x_{2}) = \beta_{1}x_{1} + \beta_{2}x_{2} 
+\end{align}
+
+since $\E(\epsilon | x_{1}, x_{2}) = \E(\epsilon) = 0$ and 
+\begin{align}
+\Var(y | x_{1}, x_{2}) & = \Var(\beta_{1}x_{1} + \beta_{2}x_{2} + \epsilon | x_{1}, x_{2}) \\
+ & = \Var(\epsilon | x_{1}, x_{2}) = \Var(\epsilon) = \sigma^{2}_{\epsilon}
+\end{align}
+
+since in conditioning on themselves, the random variables $x_{1}$ and $x_{2}$ become constants with a variance of zero. This means that $y$, conditional on $x_{1}$ and $x_{2}$ is assumed distributed as $y \sim N(\beta_{1}x_{1} + \beta_{2}x_{2}, \sigma^{2}_{\epsilon})$. With this in mind, we can write 
+\begin{align}
+\mathcal{L}(\bm{\theta}; y_{1}, y_{2}, \ldots, y_{n}) & = \mathcal{P}(y_{1}, y_{2}, \ldots, y_{n}; \bm{\theta})
+\end{align}
+
+where $i = 1, \ldots, n$ is the sample. Here and for the remainder of this section, we are conditioning on $x_{1}, x_{2}$ but we will leave this implicit so as to not clutter the notation.
+
+Because of random sampling, we assume the observations are independent of each other, we can say that the joint probability $\mathcal{P}(y_{1}, y_{2}, \ldots, y_{n}; \bm{\theta})$ is the product of the individual probabilities, so the likelihood is the product, as well:
+\begin{align}
+\mathcal{L}(\bm{\theta}; y_{1})\mathcal{L}(\bm{\theta}; y_{2}) \cdots \mathcal{L}(\bm{\theta}; y_{n}) & = \mathcal{P}(y_{1}; \bm{\theta})\mathcal{P}(y_{2}; \bm{\theta}) \cdots \mathcal{P}(y_{n}; \bm{\theta}).
+\end{align}
+
+When the errors are normally distributed, then we can write the likelihood of parameters $\bm{\theta}$ as \begin{align}
+\mathcal{L}(\bm{\theta}; y_{i}) & = \bigg(\frac{1}{\sqrt{2\pi\sigma_{\epsilon}^{2}}}\bigg)^{n}\prod_{i=1}^{n}\exp \bigg[-\frac{1}{2}\bigg(\frac{y_{i} - (\beta_{1}x_{1i} + \beta_{2}x_{2i})}{\sigma_{\epsilon}}\bigg)^{2}\bigg].
+\end{align}
+
+Notice that in modeling the conditional probability/likelihood, we are replacing the mean $\mu$ from above with the conditional mean, $\beta_{1}x_{1} + \beta_{2}x_{2}$ in the numerator of the final expression. 
+
+From here, we see that the unknown parameters are $\bm{\theta} = (\beta_{1}, \beta_{2}, \sigma^{2}_{\epsilon})$. We want to find the values of these that make the observed data, $\{(y_{i} | x_{1i}, x_{2i}): i = 1, \ldots, n\}$ the most likely. 
+
+Because multiplying probabilities together is computationally troublesome, we instead use the *log likelihood*, which is
+\begin{align}
+\mathcal{\ell}(\bm{\theta}; y_{i}) & = -\frac{n}{2}\log(2\pi) -\frac{n}{2}\log(\sigma^{2}_{\epsilon}) - \frac{1}{2}\sum_{i=1}^{n}\bigg(\frac{y_{i} - \beta_{1}x_{1i} - \beta_{2}x_{2i}}{\sigma_{\epsilon}}\bigg)^{2}.
+\end{align}
+
+By replacing the product by the sum, this expression is much more manageable. The values $\bm{\theta}$ that maximize the likelihood are the same that maximize the log likelihood, so there is no downside. 
+
+We find the values that maximize the log likelihood by taking the first derivative of the function with respect to $\bm{\theta}$ and setting this to zero (this is where the slope of the tangent line is zero; a horizontal line indicating either a maximum or a minimum), and solving for $\bm{\theta}$. 
+
+For $\sigma^{2}$, we have 
+\begin{align}
+\frac{\partial{\mathcal{\ell}}}{\partial{\sigma^{2}_{\epsilon}}} & = 0 - \frac{n}{2\sigma^{2}_{\epsilon}} + \frac{1}{2\sigma^{4}_{\epsilon}}\sum_{i=1}^{n}(y_{i} - \beta_{1}x_{1i} - \beta_{2}x_{2i})^{2} \\
+0 & = -\frac{n}{2\sigma^{2}_{\epsilon}} + \frac{1}{2\sigma^{4}_{\epsilon}}\sum_{i=1}^{n}(y_{i} - \beta_{1}x_{1i} - \beta_{2}x_{2i})^{2} \\
+2\sigma^{2}\frac{n}{2\sigma^{2}_{\epsilon}} & = 2\sigma^{2}\frac{1}{2\sigma^{4}_{\epsilon}}\sum_{i=1}^{n}(y_{i} - \beta_{1}x_{1i} - \beta_{2}x_{2i})^{2} \\
+n & = \frac{1}{\sigma^{2}_{\epsilon}}\sum_{i=1}^{n}(y_{i} - \beta_{1}x_{1i} - \beta_{2}x_{2i})^{2} \\
+\sigma^{2}_{\epsilon} n & = \sum_{i=1}^{n}(y_{i} - \beta_{1}x_{1i} - \beta_{2}x_{2i})^{2} \\
+\hat{\sigma}^{2}_{\epsilon} & = \frac{1}{n}\sum_{i=1}^{n}(y_{i} - \hat{\beta}_{1}x_{1i} - \hat{\beta}_{2}x_{2i})^{2} \\
+ & = \frac{1}{n}\sum_{i=1}^{n}\hat{\epsilon}_{i}^{2}
+\end{align} 
+
+where $\hat{\epsilon}_{i} = y_{i} - \hat{\beta}_{1}x_{1i} - \hat{\beta}_{2}x_{2i}$ are the residuals (not the errors). Thus, the ML estimate of $\sigma^{2}_{\epsilon}$ is biased, as it does not use the sample corrected $(n - 1)^{-1}$. But in large samples, the bias is negligable. 
+
+Similarly, for $\beta_{1}$, we have 
+\begin{align}
+\frac{\partial{\mathcal{\ell}}}{\partial{\beta_{1}}} & = 0 - 0 - 2 \sum_{i=1}^{n}x_{1i}(y_{i} - \beta_{1}x_{1i} - \beta_{2}x_{2i}) \\
+0 & = - 2\sum_{i=1}^{n}x_{1i}(y_{1i} - \beta_{1}x_{1i} - \beta_{2}x_{2i}) \\
+ & = \sum_{i=1}^{n}(x_{i1}y_{i} - \beta_{1}x_{1i}^{2} - \beta_{2}x_{1i}x_{2i}) \\
+\hat{\beta}_{1} & = \frac{\sum_{i=1}^{n}x_{1i}y_{i} - \hat{\beta}_{2}\sum_{i=1}^{n}x_{1i}x_{2i}}{\sum_{i=1}^{n}x_{1i}^{2}}
+\end{align}
+
+which is the ML estimate of $\beta_{1}$ and is identical to the ordinary least squares (OLS) estimate. $\hat{\beta}_{2}$ is arrived at analogously. 
+
+## Normality 
+
+From the previous section, it should be clear that the assumption of normally distributed errors is vitally important for maximum likelihood estimation. This is because only when an outcome variable (conditional on the covariates, i.e., the errors) is normally distributed can it be summarized completely by the mean and variance, and only then can we calculate exact probabilities (and thus also likelihoods) based on those pieces of information alone. 
+
+The normal distribution is *continuous* and characterized by a concentration of the observations around the mean with symmetrical tails, see Figure \ref{fig:norm}. But many social science constructs are not normally distributed and may be skewed or have excess kurtosis, see Figure \ref{fig:skewed}. Others may not be measured continuously, but rather using Likert-style scales leading to ordinal data, shown in Figure \ref{fig:nonnorm}. Still others may be nominal, i.e., dichotomous (yes/no) or multinomial (postal codes, outcomes of a die roll, etc.) in nature. Figure \ref{fig:dich} shows an example of a variable that can take on one of two values, which is characterized by the binomial distribution. 
+
+```{r, echo=FALSE, fig.cap="\\label{fig:normass}Normal distribution assumption", fig.subcap=c("\\label{fig:norm}Normal distribution", "\\label{fig:skewed}Skewed continuous distribution", "\\label{fig:nonnorm}Coarsely measured normal distribution", "\\label{fig:dich}Binomial distribution"), out.width="50%", fig.ncol = 2, fig.align="center"}
+n <- 10000
+
+x <- rnorm(n, 0, 1)
+hist(x, breaks = 30)
+
+u <- rnbinom(n, 10, 0.5)
+hist(u, breaks = 30)
+
+w <- round(x)
+hist(w)
+
+d <- sample(0:1, size = n, replace = TRUE, prob = c(0.3, 0.7))
+hist(d)
+```
+
+The consequences of nevertheless performing ML on nonnormal data has been widely investigated, however, and most analyses come to the conclusion that a violation of the normality assumption is not catastrophic. We generally differentiate between nonnormal continuous variables, and coarsely categorized variables, which can encompass ordinal as well as nominal variables.  
+
+Nonnormal continuous variables are arguably the less problematic of the two. They can lead to a $\chi^{2}$ model fit test statistic that is too often significant when it should not be (incorrect rejection of the true model) and standard errors that tend to be too low, yielding too many significant parameter estimates [@West1995]. In `lavaan`, estimators like `MLM` (for complete data) and `MLR` (for complete and incomplete data) offer standard errors and $\chi^{2}$ test statistics that are robust to nonnormality, see the `lavaan` tutorial website (https://lavaan.ugent.be/tutorial/est.html) and the 'brief user's guide' (https://users.ugent.be/~yrosseel/lavaan/lavaan2.pdf). 
+
+Ordered categorical variables display lower correlations between variables than continuous counterparts [@West1995]. This leads to a type of attenuation bias where the estimated effects in ML-based models with categorical outcomes are lower than they should be. The amount of bias depends on how coarse the variable was categorized, so to speak. Generally, the fewer the categories, the weaker the observed correlations and thus the more downwards biased the parameter estimates will be (downwards in the sense of towards zero). The same that goes for nonnormal continuous variables in terms of $\chi^{2}$ tests of model fit and standard errors apply.  
+
+The solution to the problem of categorical (or even dichotomous) outcomes in SEM is to simply declare them as such. This depends on the software, but in `lavaan` it can be done using the shortcut `ordered = c("y1", "y2")` in the `sem()` function call, assuming there are two dependent variables are called `y1` and `y2` and they are ordered categorical. In the model syntax, the user can includes $M_{k} - 1$ thresholds (where $M_{k}$ is the number of categories for the $k$th variable) per categorical endogenous variable [@Rosseel2021]. For example, if each dependent variable were measured on a Likert style scale with five categories, four thresholds could be estimated (rather than means) using 
+
+```{r eval=FALSE, echo=TRUE}
+y1 | t1 + t2 + t3 + t4
+y2 | t1 + t2 + t3 + t4
+```
+
+where `t1`, `t2` etc. are used by convention to specify the thresholds [@Rosseel2020]. The `ordered` option turns on the diagonal weighted least squares (DWLS) estimator along with corrections for standard errors and test statistics. Many know this as the *weighted least squares means and variance adjusted* (WLSMV) 'estimator' in `Mplus`.^[Estimator is placed in quotations because it is somewhat of a misnomer. Turning on WLSMV in `Mplus` employs the DWLS estimator plus robust standard error and test statistics, see this post on the `lavaan` Google Groups forum: https://groups.google.com/g/lavaan/c/Nymu7jmVUk8.] Those who are familiar with the latent variable derivation of the logistic and probit regression model [see @Best2015] will be familiar with the logic of these estimators. Essentially, it is assumed that a normally distributed underlying variable is responsible for the crude measures on the categorical scale. Thresholds are calculated based on the proportion of responses per category, which are used to estimate the continuous latent variable distribution. In a `lavaan` model using the DWLS estimator, the estimated coefficients are those of a probit regression model, but can be interpreted as the linear effect of the covariate on the latent continuous underlying response variable, see also this post on the `lavaan` Google Groups forum: https://groups.google.com/g/lavaan/c/mG5Mjrf2jgo. 
+
+## An empirical example
+
+Let us now look at some actual data to investigate the model described above. 
+
+We will use the ALLBUS 2018 dataset, which includes data on xenophobic attitudes, anomia/populism sentiments,^[Again, we focus instead on populism because it can arguably be treated as a continuous variable.] as well as social class. We will start as a traditional regression model does, with observed variables and only one dependent variable. In the coming sessions, we will expand the model to look at mediation effects and move from observed variables to latent variables to deal with measurement error. 
+
+```{r echo=FALSE}
+# Load haven 
+library(haven)
+
+# Set working directory 
+setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+
+# Import ALLBUS 2018 
+# df <- read_sav("allbus_2018_small.sav")
+df <- read_sav("ZA5270_v2-0-0.sav")
+```
+
+## Preparing the data 
+
+For now, let us look at the variables: 
+
+- social class ($x_{1})$: subjective social class (`id02`)
+- populism ($x_{2}$): "Politicians talk too much instead of acting" (`pa30`)
+- xenophobia ($y$): "There is a dangerous amount of foreigners living in Germany" (`px06`)
+
+Populism was recoded to match the direction of the xenophobia item, where higher values indicate agreement with the xenophobic/populist statement. They are both measured on 5-point a Likert scale. Social class is measured on a five point scale, from 1: "underclass" to 5: "upper-class". The following displays the variables: 
+
+```{r}
+# Recode pa30 to match px06
+df$pa30r <- abs(df$pa30 - 6)
+
+# Re-label pa30 
+df$pa30r <- labelled(df$pa30r,
+                     labels = c("LEHNE VOLL UND GANZ AB" = 1,
+                                "LEHNE EHER AB" = 2,
+                                "TEILS/TEILS" = 3,
+                                "STIMME EHER ZU" = 4,
+                                "STIMME VOLL UND GANZ ZU" = 5),
+                     label = "POLITIKER REDEN ZU VIEL, HANDELN ZU WENIG (REKODIERT)")
+
+# Inspect variables
+head(df$id02); table(df$id02)
+head(df$pa30r); table(df$pa30r)
+head(df$px06); table(df$px06)
+``` 
+
+The empirical or sample covariance matrix is 
+
+```{r}
+cov(df[, c("px06", "id02", "pa30r")], use = "complete.obs")
+```
+
+## Fitting the model in `lavaan`
+
+The package `lavaan` needs to be installed once with `install.packages("lavaan")`. This can be entered directly into the console or at the top of the script. To be able to use the package, we need to load it for every new `R` session:
+
+```{r, message=FALSE, warning=FALSE, error=FALSE}
+# install.packages("lavaan") # Uncomment to install 
+library(lavaan)
+```
+
+For users unfamiliar with `R`, SEM analyses can be carried out with almost no knowledge of the language. Typically, someone unfamiliar with `R` would prepare their data using some other statistical software, and then save the intended dataset as a `.csv`, `.xlsx`, `.dta`, `.sav`, etc. file. The user must then import the data, preferably as a dataframe, and the rest occurs using the `lavaan` syntax.
+
+The ALLBUS 2018 file we will be using is an SPSS (`.sav`) file and we will use the `read_sav()` function from the `haven` package to load it. 
+
+```{r}
+# install.packages("haven") # Uncomment to install 
+library(haven)
+
+# Set working directory - change to your directory 
+setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data") 
+
+# Import ALLBUS 2018 
+# df <- read_sav("allbus_2018_small.sav")
+df <- read_sav("ZA5270_v2-0-0.sav")
+```
+
+```{r echo=FALSE}
+# Recode pa30 to match px06
+df$pa30r <- abs(df$pa30 - 6)
+
+# Re-label pa30 
+df$pa30r <- labelled(df$pa30r,
+                     labels = c("LEHNE VOLL UND GANZ AB" = 1,
+                                "LEHNE EHER AB" = 2,
+                                "TEILS/TEILS" = 3,
+                                "STIMME EHER ZU" = 4,
+                                "STIMME VOLL UND GANZ ZU" = 5),
+                     label = "POLITIKER REDEN ZU VIEL, HANDELN ZU WENIG (REKODIERT)")
+```
+
+To use `lavaan`, we create an `R` object using the assignment operator `<-`, see the model syntax example below. Here, the object has been called `rm1` for 'regression model 1'. The object can be named anything that complies with naming conventions in `R` (e.g., the object name must start with a letter or dot, underscores and dots can be used to separate words, etc.). The model syntax is enclosed in quotes, either single `''` or double `""`. This means that the model syntax is essentially a string that the `lavaan` package interprets in a second step. Once the model has been specified, we use the `sem()` function to 'fit' or 'estimate' the model. Notice a second object is made out of the fitted `lavaan` object. Here the fitted `lavaan` object has been named `rm1.fit`. 
+
+The default estimator is ML. We can switch the estimator in the fitting function call, e.g., `sem(model = rm1, data = df, estimator = "ULS")` for ULS. If we do not include the `estimator` argument, ML is used. 
+
+To reiterate, we specify the SEM by writing the model syntax as a string and saving it as an object. Then, in a second step, we run the `sem()` function on that object. The `sem()` function requires at least two arguments: `model`, i.e., the model object (here: `rm1`), and `data`, i.e., the dataframe or covariance matrix (along with the mean vector, if desired). That is, at a bare minimum, we must tell `lavaan` how the model is specified and where the data is. There are a number of other optional arguments that can be included. If they are not, the defaults of the `sem()` wrapper are used.^[The main defaults of the `sem()` wrapper are: intercepts of the latent variables set to zero, the first factor loading in factor models is set to one, the residual variances and variances of exogenous latent variables are freely estimated, exogenous latent variables are set to covary. Further details can be found at https://rdrr.io/cran/lavaan/man/sem.html and https://cran.r-project.org/web/packages/lavaan/lavaan.pdf, or by entering `lavOptions()` into the console to get a full list of defaults. An explanation of the optional arguments can be found by entering `?lavOptions` in the console. There are other 'wrappers' with slightly different default options, like `cfa()` for example, see the `lavaan` tutorial website at https://lavaan.ugent.be/tutorial/cfa.html.] 
+
+By default, the model is essentially fit to centered data so that each variable has a mean of zero. When we turn the mean structure on, the default behaviour is to estimate an intercept or mean (depending on whether the variable is exogenous or endogenous) per equation. 
+
+We use the `~` or 'regressed on' operator to regress `px06` on `id02` and `pa30r`. We can further get into the habit of using *labels* to make the output easier to read, and to be able to extract pieces of the fitted object more easily. Labels work by premultiplying the variable by some string, as shown below. We will call the coefficients `b1` and `b2` for 'beta 1' and 'beta 2', respectively.
+
+```{r}
+# Specify the model 
+rm1 <- '
+# Regression 
+  px06 ~ b1*id02 + b2*pa30r
+'
+rm1.fit <- sem(model = rm1, data = df, estimator = "ML")
+```
+
+Once we have specified and estimated the model, we can inspect the results using `summary()`:
+
+```{r}
+summary(rm1.fit)
+```
+
+The summary is broken up into roughly five parts. First, there is a short summary with some general information: the estimator, number of model parameters ($\beta_{1}, \beta_{2}, \psi$),^[Note, again, that the variances of the independent variables are not included as parameters. They are set to the sample values.] and the number of observations used and in total. By default, listwise deletion is used. 
+
+```{r output.lines=1:8}
+summary(rm1.fit)
+```
+
+Next, we have some information on model fit. Shown here is the chi square test of the hypothesis $\bm{S} = \bm{\Sigma}(\bm{\theta})$, that the model-implied covariance matrix is consistent with the observed data. We will discuss the chi square test and model fit when we discuss confirmatory factor analysis. Since the model is *just-identified*, i.e., the number of unique pieces of information ($\var(y), \cov(y,x), \var(x)$) equals the number of parameters to estimate $\hat{\beta}_{1}, \hat{\beta}_{2}, \hat{\sigma}^{2}_{\epsilon}$, there is always a solution that satisfies $\bm{S} - \bm{\Sigma}(\bm{\hat{\theta}}) = \bm{0}$. 
+
+By setting the model-implied variances and covariances to the sample values, there are three equations, i.e., $\phi_{1} = \var(x_{1}), \phi_{2} = \var(x_{2}), \phi_{21} = \cov(x_{1},x_{2})$. By covariance algebra, we know
+\begin{align}
+\var(y) = 2.00 & = \beta_{1}^{2}\phi_{1} + \beta_{2}^{2}\phi_{2} + 2 \beta_{1}\beta_{2}\phi_{21} + \psi = \beta_{1}^{2}0.45 +  \beta_{2}^{2} 0.97 - 2 \beta_{1}\beta_{2} 0.18 + \psi \\
+\cov(y, x_{1}) = -0.26 & = \beta_{1}\phi_{1} + \beta_{2}\phi_{21} = \beta_{1} 0.45 -\beta_{2} 0.18 \\
+\cov(y, x_{2}) = 0.52 & = \beta_{1}\phi_{21} + \beta_{2}\phi_{2} = -\beta_{1} 0.18 + \beta_{2} 0.97
+\end{align}
+
+where we can start with either covariance and express one coefficient in terms of the other. For example, 
+\begin{align}
+\cov(y, x_{2}) & = -\beta_{1} 0.18 + \beta_{2} 0.97 \\
+0.52 & = -\beta_{1} 0.18 + \beta_{2} 0.97 \\
+\hat{\beta}_{1} & = \frac{\beta_{2} 0.97 - 0.52}{0.18} \\
+ & = \beta_{2} 5.39 - 2.89
+\end{align}
+
+which we can substitute into $\cov(y, x_{1})$
+\begin{align}
+\cov(y, x_{1}) & = \beta_{1} 0.45 -\beta_{2} 0.18 \\
+-0.26 & = \beta_{1} 0.45 -\beta_{2} 0.18 \\
+-0.26 & = (\beta_{2} 5.39 - 2.89) 0.45 - \beta_{2} 0.18 \\
+-0.26 & = \beta_{2} 2.42 - 1.30 - \beta_{2} 0.18 \\
+\beta_{2}(2.42 - 0.18) & = 1.30 - 0.26 \\
+\hat{\beta}_{2} & = \frac{1.04}{2.24} \\
+ & = 0.46. 
+\end{align}
+
+This we can now re-enter into $\cov(y, x_{2})$ for 
+\begin{align}
+0.52 & = -\beta_{1} 0.18 + \beta_{2} 0.97 \\
+ & = -\beta_{1} 0.18 + 0.46(0.97) \\
+\hat{\beta}_{1} & = \frac{0.45 - 0.52}{0.18} \\
+ & = -0.39
+\end{align}
+
+which can both finally be entered into $\var(y)$ to solve for $\psi$, the error variance
+\begin{align}
+2.00 & = \beta_{1}^{2}0.45 +  \beta_{2}^{2} 0.97 - 2 \beta_{1}\beta_{2} 0.18 \\
+ & = -0.39^{2}(0.45) + 0.46^{2} (0.97) - 2 (-0.39 \cdot 0.46) (0.18) + \psi \\
+\hat{\psi} & = 2.00 - (-0.39)^{2}(0.45) - (0.46)^{2}(0.97) + 2(-0.39 \cdot 0.46) (0.18) \\
+ & = 1.66
+\end{align}
+
+which are, indeed, the *closed-form* solutions for the unknown parameters. These are the estimates of the SEM shown in the model output. When we plug these values back in to the model-implied matrix, we see that it results in an exact match of the sample covariance matrix: 
+
+```{r}
+# Observed covariance matrix
+lavInspect(rm1.fit, "obs")
+# Model-implied covariance matrix 
+lavInspect(rm1.fit, "implied")
+# Residual matrix 
+lavInspect(rm1.fit, "resid")
+```
+
+This does not mean the model accurately describes the data, but rather that the hypothesis $\bm{S} - \bm{\Sigma}(\bm{\theta}) = \bm{0}$ *cannot be tested* with a just-identified model. 
+
+The information about the parameter estimates we can ignore because they are all just the default. Next, the regression coefficients are shown. These are the unstandardized coefficients of the independent variables, `id02` and `pa30r`, on the dependent variable, `px06`. The labels we used (`b1`, `b2`) are listed to the right of the the variable names, along with the standard errors, z- and p-values. The estimates are the same as we derived above. 
+
+```{r output.lines=21:26}
+summary(rm1.fit)
+```
+
+Finally, the only other parameter in the model, the error variance, is shown. 
+
+```{r output.lines=28:29}
+summary(rm1.fit)
+```
+
+
+
+\clearpage 
+
+# References 

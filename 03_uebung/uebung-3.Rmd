@@ -1,0 +1,209 @@
+---
+title: "Einführung in SEM"
+subtitle: "Übung 3"
+author: "Henrik Kenneth Andersen"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(haven)
+library(lavaan)
+knitr::opts_chunk$set(echo = FALSE)
+df <- read_sav("data/allbus2018.sav")
+```
+
+## Konfirmatorische Faktorenanalyse
+
+### Aufgabe 1
+
+Schätzen Sie folgende Konfirmatorische Faktorenanalyse: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mxx <- '
+fremdf =~ 1*px06 + l2*px07 + l3*px08 + l4*px09 + l5*px10
+'
+mxx.fit <- sem(mxx, df)
+library(semPlot)
+semPaths(mxx.fit, style = "lisrel", rotation = 1, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Inspizieren Sie die verwendeten Variablen mit `head()`. 
+
+```{r inspect1, exercise=TRUE}
+
+```
+
+```{r inspect1-solution}
+head(df$px06)
+head(df$px07)
+head(df$px08)
+head(df$px09)
+head(df$px10)
+```
+
+Wie viele Freiheitsgrade hat das Modell?
+
+```{r df, exercise=TRUE}
+
+```
+
+```{r df-solution}
+# Anzahl Indikatoren
+p <- 5
+# Empirische Informationen: p(p + 1)/2
+t <- p * (p + 1) / 2
+# 5 Fehlervarianzen
+# 4 Faktorladungen
+# 1 Latente Variable Varianz
+df <- t - (5 + 4 + 1); df
+```
+
+Laden Sie das `lavaan` Paket.
+
+```{r load, exercise=TRUE}
+
+```
+
+```{r load-solution}
+library(lavaan)
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells mit standardisierten Lösungen an. 
+
+```{r estimate1, exercise=TRUE}
+# Bitte nennen Sie das Objekt m1 und das gefittete Modell m1.fit. 
+```
+
+```{r estimate1-solution}
+m1 <- '
+# Messmodell
+  fremdf =~ 1*px06 + l2*px07 + l3*px08 + l4*px09 + l5*px10
+# Messfehler
+  px06 ~~ theta1*px06
+  px07 ~~ theta2*px07
+  px08 ~~ theta3*px08
+  px09 ~~ theta4*px09
+  px10 ~~ theta5*px10
+# Varianz der latenten Variable
+  fremdf ~~ phi1*fremdf
+'
+m1.fit <- cfa(model = m1, data = df, estimator = "ML")
+summary(m1.fit, standardized = TRUE)
+```
+
+```{r setup-cfa1}
+m1 <- '
+# Messmodell
+  fremdf =~ 1*px06 + l2*px07 + l3*px08 + l4*px09 + l5*px10
+# Messfehler
+  px06 ~~ theta1*px06
+  px07 ~~ theta2*px07
+  px08 ~~ theta3*px08
+  px09 ~~ theta4*px09
+  px10 ~~ theta5*px10
+# Varianz der latenten Variable
+  fremdf ~~ phi1*fremdf
+'
+m1.fit <- cfa(model = m1, data = df, estimator = "ML")
+```
+
+Was ist die "Model-Implied" Korrelation zwischen `px07` und `px09`? 
+
+```{r corr, exercise=TRUE, exercise.setup="setup-cfa1"}
+
+```
+
+```{r corr-solution}
+# Von der Modellzusammenfassung 
+0.631 * 0.830
+# Double-check; "cor.ov" ist Model-Implied Kovarianzmatrix der beobachteten Variablen
+lavInspect(m1.fit, "cor.ov")
+```
+
+Fordern Sie noch die Fitmaße an. 
+
+```{r fit, exercise=TRUE, exercise.setup="setup-cfa1"}
+
+```
+
+```{r fit-solution}
+summary(m1.fit, standardized = TRUE, fit.measures = TRUE)
+```
+
+Beurteilen Sie das Modellfit.
+
+```{r fit-urteil, exercise=TRUE}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+Beurteilen Sie die (konvergente) Validität des Messmodells. 
+
+```{r interp1, exercise=TRUE}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+Laden Sie das Paket `semTools()`.
+
+```{r semtools, exercise=TRUE}
+
+```
+
+```{r semtools-solution, message=FALSE, warning=FALSE}
+library(semTools)
+```
+
+Berechnen Sie die Reliabilität des Messmodells mit `semTools::reliability()`.
+
+```{r reliability, exercise=TRUE, exercise.setup="setup-cfa1"}
+
+```
+
+```{r reliability-solution}
+semTools::reliability(m1.fit, what = "alpha")
+```
+
+Laden Sie das `semPlot` Paket. 
+
+```{r semplot, exercise=TRUE}
+
+```
+
+```{r semplot-solution}
+library(semPlot)
+```
+
+Erstellen Sie ein Pfaddiagramm der CFA mit `semPaths()`. 
+
+```{r setuppath}
+m1 <- '
+# Messmodell
+  fremdf =~ 1*px06 + l2*px07 + l3*px08 + l4*px09 + l5*px10
+# Messfehler
+  px06 ~~ theta1*px06
+  px07 ~~ theta2*px07
+  px08 ~~ theta3*px08
+  px09 ~~ theta4*px09
+  px10 ~~ theta5*px10
+# Varianz der latenten Variable
+  fremdf ~~ phi1*fremdf
+'
+m1.fit <- cfa(model = m1, data = df, estimator = "ML")
+```
+
+```{r sempaths, exercise=TRUE, exercise.setup="setuppath"}
+
+```
+
+```{r sempaths-solution}
+semPaths(m1.fit, 
+         style = "lisrel",   # lisrel Notation
+         whatLabels = "est", # geschätzte Parameterwerte zeigen
+         rotation = 1,       # Von links (exo) nach rechts (endo)
+         sizeMan = 8,        # Manifeste Variablen Größe 
+         nCharNodes = 0,     # Keine Abkürzungen
+         nCharEdges = 0,     # Keine Abkürzungen
+         edge.label.cex = 1) # Größe Labels 
+```
+

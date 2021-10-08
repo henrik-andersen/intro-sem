@@ -1,0 +1,298 @@
+---
+title: "Numerical methods"
+author: "Henrik Kenneth Andersen"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Say we had the function 
+
+\begin{align}
+f(x) & = 2x^{2} + 6x - 8.
+\end{align}
+
+It is shown in Figure \ref{fig:fx}
+
+```{r fig.align="center", fig.cap="\\label{fig:fx}$f(x) = 2x^2 + 6x - 8$", warning=FALSE, message=FALSE}
+library(latex2exp)
+
+fx <- function(x) {
+  y <- 2 * x^2 + 6 * x - 8
+  return(y)
+}
+
+df <- data.frame(x = seq(-6, 4, 0.1), y = fx(seq(-6, 4, 0.1)))
+
+library(ggplot2)
+
+ggplot(df, aes(x = x, y = y)) + 
+  geom_point() + 
+  scale_x_continuous(name = TeX("$x$"), limits = c(-7, 5)) + 
+  scale_y_continuous(name = TeX("$f(x)$")) + 
+  geom_hline(yintercept = 0)
+```
+
+If we wanted to find the root of the function, i.e., where the function equals zero, we could solve for $f(x) = 0$
+
+\begin{align}
+\begin{split}
+f(x) & = 2x^{2} + 6x - 8 \\
+  0 & = 2x^{2} + 6x - 8 \\
+  0 / 2 & = x^{2} + 3x - 4
+\end{split}
+\end{align}
+
+which is in the 'monic form' $x^{2} + px + q$, where $p = 3$, $q = -4$. We can solve this with the quadratic formula
+
+\begin{align}
+\begin{split}
+x & = \frac{1}{2}(-p \pm \sqrt{p^{2} - 4q}) \\
+  & = \frac{1}{2}(-3 \pm \sqrt{3^{2} - 4(-4)}) \\
+  & = \frac{1}{2}(-3 \pm \sqrt{25}) \\
+  & = \frac{1}{2}(-3 + 5) = \frac{1}{2}2 = 1,  \\
+  & = \frac{1}{2}(-3 - 5) = \frac{1}{2}-8 = -4.
+\end{split}
+\end{align}
+
+The points where $f(x) = 0$ are $-4$ and $1$ which is clear from the graph. 
+
+--- 
+
+Another way to find the roots of the function is using Newton's method. We start at any value for $x$ and take the first derivative of the function. This gives us the tangent line for that value of $x$. 
+
+The first derivative is 
+
+\begin{align}
+f(x) & = 2x^{2} + 6x - 8 \\
+f'(x) & = 4x + 6
+\end{align}
+
+The slope at, say, $x = -6$ is $4(-6) + 6 = `r 4 * -6 + 6`$.
+
+```{r warning=FALSE, error=FALSE, message=FALSE, fig.align="center", fig.cap="$f(x) = 2x^2 + 6x - 8$"}
+fpx <- function(x) {
+  y <- 4 * x + 6
+}
+
+ggplot(df, aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  geom_abline(intercept = -fpx(-6) * -6 + fx(-6), slope = fpx(-6), linetype = "dashed") + 
+  geom_vline(xintercept = -6, linetype = "dashed") + 
+  scale_x_continuous(name = TeX("$x$"), limits = c(-7, 5)) + 
+  scale_y_continuous(name = TeX("$f(x)$")) + 
+  annotate("text", x = -5.05, y = -5, label = TeX("$x_{0} - x_{1}$")) + 
+  annotate("text", x = -6.50, y = 10, label = TeX("f(x)")) + 
+  annotate("text", x = -4.50, y = 12.5, label = TeX("f'(x)"))
+```
+
+Let is call this value the *starting value*, i.e., $x_{0} = -6$. 
+
+From this, we can see that the tangent line forms a right-angle triangle with $f(x_{0})$ and the distance between the starting value, $-6$ and the value where the tangent crosses $f(x_{0}) = 0$. We call the value where the tangent line crosses $f(x) = 0$ "$x_{1}$", which will be our next value in the iterative procedure.  
+
+Notice that $f'(x_{0})$ is the slope, $f(x_{0})$ is the rise and $x_{0} - x_{1}$ is the run. We know that slope is "rise over run", so 
+
+\begin{align}
+f'(x_{0}) & = \frac{f(x_{0})}{x_{0} - x_{1}} 
+\end{align}
+
+and by rearrangement
+
+\begin{align}
+x_{0} - x_{1} & = \frac{f(x_{0})}{f'(x_{0})} \\
+x_{1} & = x_{0} - \frac{f(x_{0})}{f'(x_{0})}
+\end{align}
+
+which is the formula for the iterative procedure. We take the current value for $x$ and subtract the value of $f(x)$ divided by $f'(x)$. This will give us the next step. Once we have it, we plug it back in to get the step after that, and so on. 
+
+```{r}
+newton <- function(x) {
+  xnew <- x - fx(x) / fpx(x)
+  return(xnew)
+}
+
+newton(-6)
+```
+
+The new value is -4.44 repeating. 
+
+```{r warning=FALSE, error=FALSE, message=FALSE, fig.align="center", fig.cap="$f(x) = 2x^2 + 6x - 8$"}
+ggplot(df, aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  geom_abline(intercept = -fpx(-6) * -6 + fx(-6), slope = fpx(-6), 
+              linetype = "dashed", color = "blue") +
+  geom_abline(intercept = -fpx(-4.444) * -4.444 + fx(-4.444), slope = fpx(-4.444), 
+              linetype = "dashed", color = "red") + 
+  geom_vline(xintercept = -6, linetype = "dashed") + 
+  scale_x_continuous(name = TeX("$x$"), limits = c(-7, 5)) + 
+  scale_y_continuous(name = TeX("$f(x)$")) 
+```
+
+The new value is already incredibly close to the root of the function $-4$. If we continue in this fashion, the new values *converge* to the analytical solution. 
+
+```{r}
+newton(newton(-6))
+```
+
+```{r}
+newton(newton(newton(-6)))
+```
+
+```{r}
+newton(newton(newton(newton(-6))))
+```
+
+```{r warning=FALSE, error=FALSE, message=FALSE, fig.align="center", fig.cap="$f(x) = 2x^2 + 6x - 8$"}
+ggplot(df, aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  geom_abline(intercept = -fpx(-6) * -6 + fx(-6), slope = fpx(-6), 
+              linetype = "dashed", color = "blue") +
+  geom_abline(intercept = -fpx(-4.444) * -4.444 + fx(-4.444), slope = fpx(-4.444), 
+              linetype = "dashed", color = "red") + 
+  geom_abline(intercept = -fpx(-4.034) * -4.034 + fx(-4.034), slope = fpx(-4.034), 
+              linetype = "dashed", color = "pink") +
+  geom_abline(intercept = -fpx(-4.000) * -4.000 + fx(-4.000), slope = fpx(-4.000), 
+              linetype = "dashed", color = "purple") +
+  scale_x_continuous(name = TeX("$x$"), limits = c(-7, 5)) + 
+  scale_y_continuous(name = TeX("$f(x)$")) 
+```
+
+After the fourth iteration, there is no noticable improvement. The slopes are lying on top of one another and the new values differ only after many decimal places. 
+
+We can also begin on the other side of the function and find the second root: 
+
+```{r}
+newton(5)
+newton(newton(5))
+newton(newton(newton(5)))
+newton(newton(newton(newton(5))))
+```
+
+--- 
+
+The previous sections demonstrated the use of Newton's method for finding the root of a function, where $f(x) = 0$. 
+
+But what if we want to find the minimum of this function? Then we need to find where $f'(x) = 0$, i.e., where the slope of the tangent line equals zero: a horizontal line.
+
+Analytically, this is easy to find: 
+
+\begin{align}
+f'(x) & = 4x + 6 \\
+  0 & = 4x + 6 \\
+  4x & = -6 \\
+  x & = -1.5
+\end{align}
+
+```{r warning=FALSE, error=FALSE, message=FALSE, fig.align="center", fig.cap="$f(x) = 2x^2 + 6x - 8$"}
+ggplot(df, aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) +
+  geom_hline(yintercept = fx(-1.5), linetype = "dashed") + 
+  scale_x_continuous(name = TeX("$x$"), limits = c(-7, 5)) + 
+  scale_y_continuous(name = TeX("$f(x)$")) 
+```
+
+But we can use Newton's method here, as well. Instead of finding where $f(x) = 0$, we just need to find where $f'(x) = 0$, i.e., where the slope of the tangent line equals zero. 
+
+The analog to the solution above, 
+
+\begin{align}
+x_{1} & = x_{0} - \frac{f(x_{0})}{f'(x_{0})}
+\end{align}
+
+is to simply replace the function with the first derivative and the first derivative with the second derivative: 
+
+\begin{align}
+x_{1} & = x_{0} - \frac{f'(x_{0})}{f''(x_{0})}
+\end{align}
+
+where $f''(x) = 4$. The Newton method finds the minimum in this case immediately: 
+
+```{r warning=FALSE, error=FALSE, message=FALSE, fig.align="center", fig.cap="$f(x) = 2x^2 + 6x - 8$"}
+fppx <- 4
+
+newton_min <- function(x) {
+  xnew <- x - (fpx(x) / fppx)
+  return(xnew)
+}
+
+newton_min(-6)
+```
+
+This is because when we plot the values of $x$ against the first partial derivative, we see a straight line:
+
+```{r warning=FALSE, error=FALSE, message=FALSE, fig.align="center", fig.cap="$f'(x) = 4x + 6$"}
+df2 <- data.frame(x = seq(-6, 4, 0.1), y = fpx(seq(-6, 4, 0.1)))
+
+ggplot(df2, aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = -1.5, linetype = "dashed")
+```
+
+We see that the value for $x$ where the function ($f'(x)$, not $f(x)$) is zero is $-1.5$. This is a constant, so it does not matter what value we enter in `newton_min()`, the result is always the solution. The value for $x$ that minimizes the solution is $-1.5$.
+
+--- 
+
+Another method similar to Newton's is called Gradient descent. 
+
+We take some starting value and evaluate the first derivative at that value. So far this does not differ from Newton's method.
+
+```{r warning=FALSE, error=FALSE, message=FALSE, fig.align="center", fig.cap="$f(x) = 2x^2 + 6x - 8$"}
+ggplot(df, aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  geom_abline(intercept = -fpx(-6) * -6 + fx(-6), slope = fpx(-6), linetype = "dashed") + 
+  geom_vline(xintercept = -6, linetype = "dashed") + 
+  scale_x_continuous(name = TeX("$x$"), limits = c(-7, 5)) + 
+  scale_y_continuous(name = TeX("$f(x)$")) 
+```
+
+Next we define an arbitrary *step value*. In Newton's method the step value was the second derivative. In the last example it was 4, so we were essentially multiplying the derivative by $\frac{1}{4}$ each time and subtracting that off of the previous value to get the next value. In gradient descent, we do not use the second derivative, but just choose some small value so that we do not 'overshoot' the minimum. 
+
+For example, let us use $\frac{1}{10} = 0.1$ as a step value.
+
+```{r}
+descent <- function(x) {
+  xnew <- x - fpx(x) * 0.1
+  return(xnew)
+}
+
+descent(-6)
+```
+
+The algorithm depends on the step value, whereas Newton's method finds the optimal step value by taking the second derivative. Here, we do not need to take the second derivative (which can be computationally difficult in some models), but the procedure is much less efficient. After 8 iterations the values are beginning to approach the 'correct' value of $-1.5$, but they are still relatively far off. 
+
+```{r}
+descent(descent(-6))
+descent(descent(descent(-6)))
+descent(descent(descent(descent(-6))))
+descent(descent(descent(descent(descent(-6)))))
+descent(descent(descent(descent(descent(descent(-6))))))
+descent(descent(descent(descent(descent(descent(descent(-6)))))))
+descent(descent(descent(descent(descent(descent(descent(descent(-6))))))))
+descent(descent(descent(descent(descent(descent(descent(descent(descent(-6)))))))))
+```
+
+We can choose a larger step to get there quicker: 
+
+```{r}
+descent <- function(x) {
+  xnew <- x - fpx(x) * 0.2
+  return(xnew)
+}
+
+descent(-6)
+descent(descent(-6))
+descent(descent(descent(-6)))
+descent(descent(descent(descent(-6))))
+descent(descent(descent(descent(descent(-6)))))
+```
+
+but again, Newton's method chooses the optimal steps automatically. 

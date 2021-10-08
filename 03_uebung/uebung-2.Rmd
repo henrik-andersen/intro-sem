@@ -1,0 +1,233 @@
+---
+title: "Einführung in SEM"
+subtitle: "Übung 2"
+author: "Henrik Kenneth Andersen"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(haven)
+library(lavaan)
+knitr::opts_chunk$set(echo = FALSE)
+df <- read_sav("data/allbus2018.sav")
+```
+
+## Mediationsmodelle
+
+### Aufgabe 1
+
+Schätzen Sie folgendes bivariates Modell: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mxx <- '
+px06 ~ gamma11*inc1000 
+'
+mxx.fit <- sem(mxx, df)
+library(semPlot)
+semPaths(mxx.fit, style = "lisrel", rotation = 2, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Laden Sie das `lavaan` Paket.
+
+```{r load, exercise=TRUE}
+
+```
+
+```{r load-solution}
+library(lavaan)
+```
+
+Inspizieren Sie die verwendeten Variablen mit `head()`, `hist()`. Die Variable `inc1000` ist einfach die ursprüngliche Variable `inc` dividiert durch 1000. 
+
+```{r inspect1, exercise=TRUE}
+
+```
+
+```{r inspect1-solution}
+head(df$px06)
+head(df$inc); hist(df$inc)
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
+
+```{r estimate1, exercise=TRUE}
+
+```
+
+```{r estimate1-solution}
+m1 <- '
+# Regressionen
+  px06  ~ gamma11*inc1000 
+# Felervarianz 
+  px06  ~~ psi11*px06
+'
+m1.fit <- sem(model = m1, data = df, estimator = "ML")
+summary(m1.fit)
+```
+
+Interpretieren Sie die Regressionskoeffizienten. Gibt es einen totalen Effekt? 
+
+```{r interp1, exercise=TRUE}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+### Aufgabe 2 
+
+Schätzen Sie folgendes Mediationsmodell: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mx <- '
+px06 ~ gamma11*inc1000 + beta12*pa31r
+pa31r ~ gamma21*inc1000
+'
+mx.fit <- sem(mx, df)
+library(semPlot)
+semPaths(mx.fit, style = "lisrel", rotation = 2, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Inspizieren Sie noch die Variable `pa31r` mit `head()`. 
+
+```{r inspect2, exercise=TRUE}
+
+```
+
+```{r inspect2-solution}
+head(df$pa31r)
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
+
+```{r estimate, exercise=TRUE}
+
+```
+
+```{r estimate-solution}
+m2 <- '
+# Regressionen
+  px06  ~ gamma11*inc1000 + beta12*pa31r
+  pa31r ~ gamma21*inc1000
+# Felervarianz 
+  px06  ~~ psi11*px06
+  pa31r ~~ psi22*pa31r
+'
+m2.fit <- sem(model = m2, data = df, estimator = "ML")
+summary(m2.fit)
+```
+
+Interpretieren Sie die Regressionskoeffizienten.
+
+```{r interp, exercise=TRUE}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+Erweitern Sie das Mediationsmodell in dem Sie den direkten und den indirekten Effekt von `inc1000` auf `px06` definieren. 
+
+```{r estimate2, exercise=TRUE}
+
+```
+
+```{r estimate2-solution}
+m3 <- '
+# Regressionen
+  px06  ~ gamma11*inc1000 + beta12*pa31r
+  pa31r ~ gamma21*inc1000
+# Felervarianz 
+  px06  ~~ psi11*px06
+  pa31r ~~ psi22*pa31r
+# Definierte Parameter
+  dir := gamma11
+  ind := gamma21*beta12
+  tot := dir + ind
+'
+m3.fit <- sem(model = m3, data = df, estimator = "ML")
+summary(m3.fit)
+```
+
+Schätzen Sie das Modell mit Mittelwertstruktur.
+
+```{r estimate-int, exercise=TRUE}
+
+```
+
+```{r estimate-int-solution}
+# Entweder
+m4 <- '
+# Regressionen
+  px06  ~ gamma11*inc1000 + beta12*pa31r
+  pa31r ~ gamma21*inc1000
+# Felervarianz 
+  px06  ~~ psi11*px06
+  pa31r ~~ psi22*pa31r
+# Definierte Parameter
+  dir := gamma11
+  ind := gamma21*beta12
+  tot := dir + ind
+'
+m4.fit <- sem(model = m4, data = df, estimator = "ML",
+              meanstructure = TRUE)
+# Oder 
+m4 <- '
+# Regressionen
+  px06  ~ 1 + gamma11*inc1000 + beta12*pa31r
+  pa31r ~ 1 + gamma21*inc1000
+# Felervarianz 
+  px06  ~~ psi11*px06
+  pa31r ~~ psi22*pa31r
+# Definierte Parameter
+  dir := gamma11
+  ind := gamma21*beta12
+  tot := dir + ind
+'
+m4.fit <- sem(model = m4, data = df, estimator = "ML")
+summary(m4.fit)
+```
+
+Laden Sie das `semPlot` Paket. 
+
+```{r semplot, exercise=TRUE}
+
+```
+
+```{r semplot-solution}
+library(semPlot)
+```
+
+Erstellen Sie ein Pfaddiagramm des letzten Modells mit `semPaths()`. Sie können die Mittelwertstruktur mit `intercepts = TRUE` hinzufügen.
+
+```{r setuppath}
+m4 <- '
+# Regressionen
+  px06  ~ gamma11*inc1000 + beta12*pa31r
+  pa31r ~ gamma21*inc1000
+# Felervarianz 
+  px06  ~~ psi11*px06
+  pa31r ~~ psi22*pa31r
+# Definierte Parameter
+  dir := gamma11
+  ind := gamma21*beta12
+  tot := dir + ind
+'
+m4.fit <- sem(model = m4, data = df, estimator = "ML",
+              meanstructure = TRUE)
+```
+
+```{r sempaths, exercise=TRUE, exercise.setup="setuppath"}
+
+```
+
+```{r sempaths-solution}
+semPaths(m4.fit, 
+         style = "lisrel",   # lisrel Notation
+         whatLabels = "est", # geschätzte Parameterwerte zeigen
+         intercepts = TRUE,  # Intercepts, Mittelwerte anzeigen
+         sizeInt = 4,        # Größe Intercepts  
+         intAtSide = TRUE,   # Kollision mit Fehler vermeiden
+         rotation = 2,       # Von links (exo) nach rechts (endo)
+         sizeMan = 8,        # Manifeste Variablen Größe 
+         nCharNodes = 0,     # Keine Abkürzungen
+         nCharEdges = 0,     # Keine Abkürzungen
+         edge.label.cex = 1) # Größe Labels 
+```
+

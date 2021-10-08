@@ -1,0 +1,338 @@
+---
+title: "Einführung in SEM"
+subtitle: "Übung 4"
+author: "Henrik Kenneth Andersen"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(haven)
+library(lavaan)
+knitr::opts_chunk$set(echo = FALSE)
+df <- read_sav("data/allbus2018.sav")
+```
+
+## Das generelle SEM 
+
+### Aufgabe 1
+
+Schätzen Sie folgende Konfirmatorische Faktorenanalyse: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mxx <- '
+fremdf =~ 1*px06 + l21*px07 + l31*px08 + l41*px09
+poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+econps =~ 1*ep01 + l23*ep03 + l33*ep04 + l43*ep06
+fremdf ~~ phi21*poplsm + phi31*econps
+poplsm ~~ phi32*econps
+'
+mxx.fit <- sem(mxx, df)
+# summary(mxx.fit, standardized = TRUE, fit.measures = TRUE)
+library(semPlot)
+semPaths(mxx.fit, style = "lisrel", rotation = 1, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Inspizieren Sie die verwendeten Variablen mit `head()`. 
+
+```{r inspect1, exercise=TRUE}
+
+```
+
+```{r inspect1-solution}
+head(df$px06); head(df$px07); head(df$px08); head(df$px09)
+head(df$pa30r); head(df$pa31r); head(df$pa32r); head(df$pa35r)
+head(df$ep01); head(df$ep03); head(df$ep04); head(df$ep06)
+```
+
+Wie viele Freiheitsgrade hat das Modell?
+
+```{r df, exercise=TRUE}
+
+```
+
+```{r df-solution}
+# Anzahl Indikatoren
+p <- 12
+# Empirische Informationen: p(p + 1)/2
+t <- p * (p + 1) / 2
+# 12 Fehlervarianzen
+# 9 Faktorladungen
+# 3 Latente Variable Varianzen
+# 3 Latente Variable Kovarianzen
+df <- t - (12 + 9 + 3 + 3); df
+```
+
+Laden Sie das `lavaan` Paket.
+
+```{r load, exercise=TRUE}
+
+```
+
+```{r load-solution}
+library(lavaan)
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells mit standardisierten Lösungen und Fitmaße an. 
+
+```{r estimate1, exercise=TRUE}
+# Bitte nennen Sie das Objekt m1 und das gefittete Modell m1.fit. 
+```
+
+```{r estimate1-solution}
+m1 <- '
+# Messmodelle
+  fremdf =~ 1*px06  + l21*px07  + l31*px08  + l41*px09
+  poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+  econps =~ 1*ep01  + l23*ep03  + l33*ep04  + l43*ep06
+# (Ko)varianzen
+  fremdf ~~ phi11*fremdf + phi21*poplsm + phi31*econps
+  poplsm ~~ phi22*poplsm + phi32*econps
+  econps ~~ phi33*econps
+# Messfehler
+  px06  ~~ theta11*px06
+  px07  ~~ theta21*px07
+  px08  ~~ theta31*px08
+  px09  ~~ theta41*px09
+  pa30r ~~ theta12*pa30r
+  pa31r ~~ theta22*pa31r
+  pa32r ~~ theta32*pa32r
+  pa35r ~~ theta42*pa35r
+  ep01  ~~ theta13*ep01
+  ep03  ~~ theta23*ep03
+  ep04  ~~ theta33*ep04
+  ep06  ~~ theta43*ep06
+'
+m1.fit <- cfa(model = m1, data = df, estimator = "ML")
+summary(m1.fit, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r setup-cfa1}
+m1 <- '
+# Messmodelle
+  fremdf =~ 1*px06  + l21*px07  + l31*px08  + l41*px09
+  poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+  econps =~ 1*ep01  + l23*ep03  + l33*ep04  + l43*ep06
+# (Ko)varianzen
+  fremdf ~~ phi11*fremdf + phi21*poplsm + phi31*econps
+  poplsm ~~ phi22*poplsm + phi32*econps
+  econps ~~ phi33*econps
+# Messfehler
+  px06  ~~ theta11*px06
+  px07  ~~ theta21*px07
+  px08  ~~ theta31*px08
+  px09  ~~ theta41*px09
+  pa30r ~~ theta12*pa30r
+  pa31r ~~ theta22*pa31r
+  pa32r ~~ theta32*pa32r
+  pa35r ~~ theta42*pa35r
+  ep01  ~~ theta13*ep01
+  ep03  ~~ theta23*ep03
+  ep04  ~~ theta33*ep04
+  ep06  ~~ theta43*ep06
+'
+m1.fit <- cfa(model = m1, data = df, estimator = "ML")
+```
+
+Beurteilen Sie das Modellfit.
+
+```{r fit-urteil, exercise=TRUE}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+Beurteilen Sie die (konvergente) Validität des Messmodells. 
+
+```{r interp1, exercise=TRUE}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+Laden Sie das Paket `semTools()`.
+
+```{r semtools, exercise=TRUE}
+
+```
+
+```{r semtools-solution, message=FALSE, warning=FALSE}
+library(semTools)
+```
+
+Berechnen Sie die Reliabilität des Messmodells mit `semTools::reliability()`.
+
+```{r reliability, exercise=TRUE, exercise.setup="setup-cfa1"}
+
+```
+
+```{r reliability-solution}
+semTools::reliability(m1.fit, what = "alpha")
+```
+
+Beurteilen Sie die Reliabilität der Messmodelle.
+
+```{r reli-urteil, exercise=TRUE}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+Laden Sie das `semPlot` Paket. 
+
+```{r semplot, exercise=TRUE}
+
+```
+
+```{r semplot-solution}
+library(semPlot)
+```
+
+Erstellen Sie ein Pfaddiagramm der CFA mit `semPaths()`. 
+
+```{r sempaths, exercise=TRUE, exercise.setup="setup-cfa1"}
+
+```
+
+```{r sempaths-solution}
+semPaths(m1.fit, 
+         style = "lisrel",   # lisrel Notation
+         whatLabels = "est", # geschätzte Parameterwerte zeigen
+         rotation = 1,       # Von links (exo) nach rechts (endo)
+         sizeMan = 8,        # Manifeste Variablen Größe 
+         nCharNodes = 0,     # Keine Abkürzungen
+         nCharEdges = 0,     # Keine Abkürzungen
+         edge.label.cex = 1) # Größe Labels 
+```
+
+### Aufgabe 2
+
+Fordern Sie die Modifikationsindizes an. 
+
+```{r mi, exercise=TRUE, exercise.setup="setup-cfa1"}
+
+```
+
+```{r mi-solution}
+modindices(m1.fit, sort = TRUE, minimum.value = 100) # "minimum.value" kann nach Belieben angepasst werden
+```
+
+### Aufgabe 3
+
+Modifizieren Sie die CFA um das Modellfit sowie die Validität und Reliabilität zu erhöhen.
+
+```{r modify, exercise=TRUE}
+# Bitte nennen Sie das Objekt m2 und das gefittete Modell m2.fit. 
+```
+
+```{r modify-solution}
+# Ein Vorschlag 
+m2 <- '
+# Messmodelle
+  fremdf =~ 1*px07  + l21*px08  + l31*px09               # Entferne px06 wegen Kreuzladungen zu poplsm, econps (aus MIs)
+  poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+  econps =~ 1*ep01  + l23*ep03                           # Entferne ep04 und ep06 wegen mangelnder (kovergent) Konstruktvalidität 
+# (Ko)varianzen
+  fremdf ~~ phi11*fremdf + phi21*poplsm + phi31*econps
+  poplsm ~~ phi22*poplsm + phi32*econps
+  econps ~~ phi33*econps
+# Messfehler
+  px07  ~~ theta11*px07
+  px08  ~~ theta21*px08
+  px09  ~~ theta31*px09
+  pa30r ~~ theta12*pa30r
+  pa31r ~~ theta22*pa31r
+  pa32r ~~ theta32*pa32r
+  pa35r ~~ theta42*pa35r
+  ep01  ~~ theta13*ep01
+  ep03  ~~ theta23*ep03
+'
+m2.fit <- cfa(model = m2, data = df, estimator = "ML")
+```
+
+### Aufgabe 4
+
+Schätzen Sie nun folgende SEM:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mx <- '
+fremdf =~ 1*px07 + l21*px08 + l31*px09
+poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+econps =~ 1*ep01 + l23*ep03 
+fremdf ~ gamma11*econps + beta12*poplsm
+poplsm ~ gamma21*econps
+'
+mx.fit <- sem(mx, df)
+# summary(mx.fit, standardized = TRUE, fit.measures = TRUE)
+library(semPlot)
+semPaths(mx.fit, style = "lisrel", rotation = 2, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung mit standardisierten Lösungen und Fitmaße an.
+
+```{r fullsem, exercise=TRUE}
+# Bitte nennen Sie das Objekt m3 und das gefittete Modell m3.fit. 
+```
+
+```{r fullsem-solution}
+# Mit Messmodelle von m2
+m3 <- '
+# Messmodelle
+  fremdf =~ 1*px07  + l21*px08  + l31*px09               
+  poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+  econps =~ 1*ep01  + l23*ep03    
+# Regressionen
+  fremdf ~ gamma11*econps + beta12*poplsm
+  poplsm ~ gamma21*econps
+# Exogene Latente Variable Varianz
+  econps ~~ phi33*econps
+# Disturbance Varianz
+  fremdf ~~ phi11*fremdf 
+  poplsm ~~ phi22*poplsm 
+# Messfehler
+  px07  ~~ theta11*px07
+  px08  ~~ theta21*px08
+  px09  ~~ theta31*px09
+  pa30r ~~ theta12*pa30r
+  pa31r ~~ theta22*pa31r
+  pa32r ~~ theta32*pa32r
+  pa35r ~~ theta42*pa35r
+  ep01  ~~ theta13*ep01
+  ep03  ~~ theta23*ep03
+'
+m3.fit <- cfa(model = m3, data = df, estimator = "ML")
+summary(m3.fit, standardized = TRUE, fit.measures = TRUE)
+```
+
+```{r setupfullsem}
+m3 <- '
+# Messmodelle
+  fremdf =~ 1*px07  + l21*px08  + l31*px09               
+  poplsm =~ 1*pa30r + l22*pa31r + l32*pa32r + l42*pa35r
+  econps =~ 1*ep01  + l23*ep03    
+# Regressionen
+  fremdf ~ gamma11*econps + beta12*poplsm
+  poplsm ~ gamma21*econps
+# Exogene Latente Variable Varianz
+  econps ~~ phi33*econps
+# Disturbance Varianz
+  fremdf ~~ phi11*fremdf 
+  poplsm ~~ phi22*poplsm 
+# Messfehler
+  px07  ~~ theta11*px07
+  px08  ~~ theta21*px08
+  px09  ~~ theta31*px09
+  pa30r ~~ theta12*pa30r
+  pa31r ~~ theta22*pa31r
+  pa32r ~~ theta32*pa32r
+  pa35r ~~ theta42*pa35r
+  ep01  ~~ theta13*ep01
+  ep03  ~~ theta23*ep03
+'
+m3.fit <- cfa(model = m3, data = df, estimator = "ML")
+```
+
+Verwenden Sie `lavTestWald()`, um zu überprüfen, ob der Pfad `econps` $\rightarrow$ `fremdf` 'redundant' ist. 
+
+```{r wald, exercise=TRUE, exercise.setup="setupfullsem"}
+
+```
+
+```{r wald-solution}
+lavTestWald(m2.fit, constraints = "gamma1 == 0")
+```

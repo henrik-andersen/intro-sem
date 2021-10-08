@@ -1,0 +1,137 @@
+---
+title: "Einführung in SEM"
+subtitle: "Übung 1"
+author: "Henrik Kenneth Andersen"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(haven)
+library(lavaan)
+knitr::opts_chunk$set(echo = FALSE)
+df <- read_sav("data/allbus2018.sav")
+```
+
+## Multivariate Regressionsmodelle
+
+### Aufgabe 1
+
+Schätzen Sie folgendes Modell: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mx <- '
+px06 ~ beta1*id02 + beta2*pa30r
+'
+mx.fit <- sem(mx, df)
+library(semPlot)
+semPaths(mx.fit, style = "lisrel", rotation = 2, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Laden Sie das `lavaan` Paket.
+
+```{r load, exercise=TRUE}
+
+```
+
+```{r load-solution}
+library(lavaan)
+```
+
+Inspizieren Sie die verwendeten Variablen mit `head()`.
+
+```{r inspect, exercise=TRUE}
+
+```
+
+```{r inspect-solution}
+head(df$px06)
+head(df$id02)
+head(df$pa30r)
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
+
+```{r estimate, exercise=TRUE}
+
+```
+
+```{r estimate-solution}
+m1 <- '
+# Regression
+  px06 ~ beta1*id02 + beta2*pa30r
+# Felervarianz 
+  px06 ~~ psi1*px06
+'
+m1.fit <- sem(model = m1, data = df, estimator = "ML")
+summary(m1.fit)
+```
+
+Interpretieren Sie die Regressionskoeffizienten (Sie können Ihre Antwort als Kommentar eingeben).
+
+```{r interp, exercise=TRUE}
+
+```
+
+Interpretieren Sie $R^{2}$ (Sie können Ihre Antwort als Kommentar eingeben).
+
+```{r interp2, exercise=TRUE}
+
+```
+
+Laden Sie das `semPlot` Paket. 
+
+```{r semplot, exercise=TRUE}
+
+```
+
+```{r semplot-solution}
+library(semPlot)
+```
+
+Erstellen Sie ein Pfaddiagramm des Modells mit `semPaths()`.
+
+```{r setuppath}
+m1 <- '
+# Regression
+  px06 ~ beta1*id02 + beta2*pa30r
+# Felervarianz 
+  px06 ~~ psi1*px06
+'
+m1.fit <- sem(model = m1, data = df, estimator = "ML")
+```
+
+```{r sempaths, exercise=TRUE, exercise.setup="setuppath"}
+
+```
+
+```{r sempaths-solution}
+semPaths(m1.fit)
+```
+
+Sie können das Diagramm anpassen:
+
+- `style`: `ram` (Default) oder `lisrel` 
+- `whatLabels`: `est` für die geschätzten Parameter
+- `rotation`: `1`, `2`, `3` oder `4`
+- `sizeMan`: `numerisch`, Größe der beobachteten Variablen
+- `edge.label.cex`: `numerisch`, Größe der Labels 
+
+Weitere Optionen finden Sie auf [https://www.rdocumentation.org/packages/semPlot/versions/1.1.2/topics/semPaths](https://www.rdocumentation.org/packages/semPlot/versions/1.1.2/topics/semPaths).
+
+```{r sempathcustom, exercise=TRUE, exercise.setup="setuppath"}
+
+```
+
+```{r sempathcustom-solution}
+# Ein Beispiel
+semPaths(mx.fit, 
+         style = "lisrel",   # lisrel Notation
+         whatLabels = "est", # geschätzte Parameterwerte zeigen
+         rotation = 2,       # Von links (exo) nach rechts (endo)
+         sizeMan = 8,        # Manifeste Variablen Größe 
+         nCharNodes = 0,     # Keine Abkürzungen
+         nCharEdges = 0,     # Keine Abkürzungen
+         edge.label.cex = 1) # Größe Labels 
+```

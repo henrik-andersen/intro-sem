@@ -1,0 +1,56 @@
+% Packages
+\usepackage{threeparttable}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{bm}
+\usepackage{bbm}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace}
+\usepackage{etoolbox}
+\usepackage{blkarray}
+\usetikzlibrary{fit}
+\usetikzlibrary{arrows}
+\usetikzlibrary{positioning}
+\usepackage{subcaption}
+% \usepackage{subfig}
+% \usepackage{kbordermatrix}
+\usepackage{amssymb}
+% \usepackage{bbding}
+\usepackage{environ}
+
+\pgfplotsset{compat=1.16}
+
+\usepackage{mathtools}  
+\mathtoolsset{showonlyrefs}  
+
+\usepackage{booktabs}
+\usepackage{dcolumn}
+\newcolumntype{d}[1]{D{.}{.}{#1}}
+
+% Page numbers
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[page number]
+
+% Operators
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\cov}{cov}
+\DeclareMathOperator{\E}{E}
+
+% Vertical distance equations 
+\setlength{\abovedisplayskip}{-15pt}
+\setlength{\belowdisplayskip}{0pt}
+\setlength{\abovedisplayshortskip}{0pt}
+\setlength{\belowdisplayshortskip}{0pt}
+
+% \setbeamertemplate{footline}[frame number]
+
+\titlegraphic{\includegraphics[width=3cm]{figs/logo2}}
+
+\makeatletter
+\patchcmd{\beamer@sectionintoc}{\vskip1.5em}{\vskip1.25em}{}{}
+\makeatother
