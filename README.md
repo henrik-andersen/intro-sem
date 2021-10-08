@@ -7,8 +7,8 @@ These are course materials for a 2-day German language workshop on SEM.
 
 Participants in the course need to download the datafile separately from ILIAS and paste the `.sav` into 
 
-`04_data`
-`03_uebung/data`
+- `04_data`
+- `03_uebung/data`
 
 ---
 
