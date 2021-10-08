@@ -1,0 +1,1 @@
+kopiere allbus2018.sav in dieses Verzeichnis
