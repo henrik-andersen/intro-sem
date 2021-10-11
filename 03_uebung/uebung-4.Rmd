@@ -338,7 +338,7 @@ Verwenden Sie `lavTestWald()`, um zu überprüfen, ob der Pfad `econps` $\righta
 lavTestWald(m2.fit, constraints = "gamma1 == 0")
 ```
 
-### Aufgabe 4
+### Aufgabe 5
 
 Schätzen Sie folgendes MIMIC Modell: 
 
