@@ -1,0 +1,89 @@
+---
+title: "Einführung in SEM"
+subtitle: "Übung 1"
+author: "Henrik Kenneth Andersen"
+date: "12.10.2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(haven)
+library(lavaan)
+knitr::opts_chunk$set(echo = TRUE)
+df <- read_sav("data/allbus2018.sav")
+```
+
+## Multivariate Regressionsmodelle
+
+### Aufgabe 1
+
+Schätzen Sie folgendes Modell: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mx <- '
+px06 ~ beta1*id02 + beta2*pa30r
+'
+mx.fit <- sem(mx, df)
+library(semPlot)
+semPaths(mx.fit, style = "lisrel", rotation = 2, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Laden Sie das `lavaan` Paket.
+
+```{r load}
+##
+```
+
+Inspizieren Sie die verwendeten Variablen mit `head()`.
+
+```{r inspect}
+##
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
+
+```{r estimate}
+##
+```
+
+Interpretieren Sie die Regressionskoeffizienten (Sie können Ihre Antwort als Kommentar eingeben).
+
+```{r interp}
+##
+```
+
+Interpretieren Sie $R^{2}$ (Sie können Ihre Antwort als Kommentar eingeben).
+
+```{r interp2}
+##
+```
+
+Laden Sie das `semPlot` Paket. 
+
+```{r semplot}
+##
+```
+
+```{r semplot-solution}
+library(semPlot)
+```
+
+Erstellen Sie ein Pfaddiagramm des Modells mit `semPaths()`.
+
+```{r sempaths}
+##
+```
+
+Sie können das Diagramm anpassen:
+
+- `style`: `ram` (Default) oder `lisrel` 
+- `whatLabels`: `est` für die geschätzten Parameter
+- `rotation`: `1`, `2`, `3` oder `4`
+- `sizeMan`: `numerisch`, Größe der beobachteten Variablen
+- `edge.label.cex`: `numerisch`, Größe der Labels 
+
+Weitere Optionen finden Sie auf [https://www.rdocumentation.org/packages/semPlot/versions/1.1.2/topics/semPaths](https://www.rdocumentation.org/packages/semPlot/versions/1.1.2/topics/semPaths).
+
+```{r sempathcustom}
+
+```

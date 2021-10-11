@@ -1,0 +1,121 @@
+---
+title: "Einführung in SEM"
+subtitle: "Übung 2"
+author: "Henrik Kenneth Andersen"
+date: "12.10.2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(haven)
+library(lavaan)
+knitr::opts_chunk$set(echo = TRUE)
+df <- read_sav("data/allbus2018.sav")
+```
+
+## Mediationsmodelle
+
+### Aufgabe 1
+
+Schätzen Sie folgendes bivariates Modell: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mxx <- '
+px06 ~ gamma11*inc1000 
+'
+mxx.fit <- sem(mxx, df)
+library(semPlot)
+semPaths(mxx.fit, style = "lisrel", rotation = 2, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Laden Sie das `lavaan` Paket.
+
+```{r load}
+##
+```
+
+Inspizieren Sie die verwendeten Variablen mit `head()`, `hist()`. Die Variable `inc1000` ist einfach die ursprüngliche Variable `inc` dividiert durch 1000. 
+
+```{r inspect1}
+##
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
+
+```{r estimate1}
+# Bitte nennen Sie das Objekt m1 und das gefittete Modell m1.fit. 
+```
+
+Interpretieren Sie die Regressionskoeffizienten. Gibt es einen totalen Effekt? 
+
+```{r interp1}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+### Aufgabe 2 
+
+Schätzen Sie folgendes Mediationsmodell: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+mx <- '
+px06 ~ gamma11*inc1000 + beta12*pa31r
+pa31r ~ gamma21*inc1000
+'
+mx.fit <- sem(mx, df)
+library(semPlot)
+semPaths(mx.fit, style = "lisrel", rotation = 2, sizeMan = 8, nCharNodes = 0, nCharEdges = 0, edge.label.cex = 1)
+```
+
+Inspizieren Sie noch die Variable `pa31r` mit `head()`. 
+
+```{r inspect2}
+##
+```
+
+Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
+
+```{r estimate}
+# Bitte nennen Sie das Objekt m2 und das gefittete Modell m2.fit. 
+```
+
+Interpretieren Sie die Regressionskoeffizienten.
+
+```{r interp}
+# Sie können Ihre Antwort als Kommentar eingeben.
+```
+
+Erweitern Sie das Mediationsmodell in dem Sie den direkten und den indirekten Effekt von `inc1000` auf `px06` definieren. 
+
+```{r estimate2}
+# Bitte nennen Sie das Objekt m3 und das gefittete Modell m3.fit. 
+```
+
+Schätzen Sie das Modell mit Mittelwertstruktur.
+
+```{r estimate-int}
+# Bitte nennen Sie das Objekt m4 und das gefittete Modell m4.fit. 
+```
+
+Laden Sie das `semPlot` Paket. 
+
+```{r semplot}
+##
+```
+
+Erstellen Sie ein Pfaddiagramm des letzten Modells mit `semPaths()`. Sie können die Mittelwertstruktur mit `intercepts = TRUE` hinzufügen.
+
+
+```{r sempaths}
+##
+```
+
+### Aufgabe 3
+
+Schätzen Sie das zweite Modell (`m2`) erneut diesmal getrennt für Männer und Frauen (Variable `frau`). Dazu müssen Sie die Labels von `m2` entweder entfernen oder getrennte Labels für die Gruppen verwenden (z.B., `c(label1, label2)`). 
+
+```{r multigroup}
+# Bitte nennen Sie das Objekt m5 und das gefittete Modell m5.fit. 
+```
+
+
+
