@@ -1,6 +1,6 @@
 ---
 title: "Introduction to Structural Equation Modeling: Linear Regression"
-author: "Henrik Kenneth Andersen"
+author: "Dr. Henrik Kenneth Andersen"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output: pdf_document
 header-includes:
@@ -34,6 +34,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 library(Rcpp)
+library(reticulate)
 ```
 
 ```{r script-hooks, echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
@@ -428,9 +429,10 @@ F_{ULS} & = \frac{1}{2} \tr\bigg[\bigg(
 
 since we are setting the model-implied variance of $x$ to the sample value, $\hat{\phi} = 4.05$. From here, we can take the first partial derivatives with respect to $\psi$ and $\beta$ and solve for each to get the ULS estimates. We could do this by hand, but it is much easier to use a symbolic algebra program, like `sympy` in `Python`:
 
-```{python, results="asis"}
+```{python, eval=FALSE}
 # Use symbolic algebra library sympy
 from sympy import * 
+# import sympy
 
 # Symbols
 psi, beta = symbols('psi, beta')
@@ -451,19 +453,30 @@ dFulsdbeta = diff(Fuls, beta)
 print('$' + latex(dFulsdbeta) + '$')
 ```
 
+\begin{align}
+32.805 \beta^{3} + 8.1\beta \psi - 63-423 \beta - 49.653
+\end{align}
 
-```{python, results="asis"}
+```{python, eval=FALSE}
 # First partial derivative for psi
 dFulsdpsi = diff(Fuls, psi)
 print('$' + latex(dFulsdpsi) + '$')
 ```
 
-```{python, results="asis"}
+\begin{align}
+4.05\beta^{2} + 1.0\psi - 11.88 
+\end{align}
+
+```{python, eval=FALSE}
 # Solve for psi 
 print('$' + latex(solve(dFulsdpsi, psi)) + '$')
 ```
 
-```{python, results="asis"}
+\begin{align}
+[11.88 - 4.05\beta^{2}]
+\end{align}
+
+```{python, eval=FALSE}
 # Substitute solution for psi into derivative for beta
 dFulsdbeta = dFulsdbeta.subs(Symbol('psi'), 11.88 - beta ** 2 * 4.05)
 
@@ -471,10 +484,18 @@ dFulsdbeta = dFulsdbeta.subs(Symbol('psi'), 11.88 - beta ** 2 * 4.05)
 print('$' + latex(solve(dFulsdbeta, beta)) + '$')
 ```
 
-```{python, results="asis"}
+\begin{align}
+[1.51358024691358]
+\end{align}
+
+```{python, eval=FALSE}
 # Solve for psi = 11.88 - 4.05 * beta ** 2
 11.88 - 4.05 * 1.51 ** 2
 ```
+
+\begin{align}
+2.645595000000002
+\end{align}
 
 From this, we see that $\hat{\bm{\theta}}_{ULS} = (\hat{\beta}_{ULS} = 1.51, \hat{\psi}_{ULS} = 2.65)$. 
 
@@ -853,11 +874,11 @@ We will use the ALLBUS 2018 dataset, which includes data on xenophobic attitudes
 library(haven)
 
 # Set working directory 
-setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+setwd("F:/github-projects/intro-sem")
 
 # Import ALLBUS 2018 
 # df <- read_sav("allbus_2018_small.sav")
-df <- read_sav("ZA5270_v2-0-0.sav")
+df <- read_sav("04_data/allbus2018.sav")
 ```
 
 ## Preparing the data 
@@ -913,10 +934,10 @@ The ALLBUS 2018 file we will be using is an SPSS (`.sav`) file and we will use t
 library(haven)
 
 # Set working directory - change to your directory 
-setwd("../04_data") 
+setwd("F:/github-projects/intro-sem")
 
 # Import ALLBUS 2018 
-df <- read_sav("allbus2018.sav")
+df <- read_sav("04_data/allbus2018.sav")
 ```
 
 To use `lavaan`, we create an `R` object using the assignment operator `<-`, see the model syntax example below. Here, the object has been called `rm1` for 'regression model 1'. The object can be named anything that complies with naming conventions in `R` (e.g., the object name must start with a letter or dot, underscores and dots can be used to separate words, etc.). The model syntax is enclosed in quotes, either single `''` or double `""`. This means that the model syntax is essentially a string that the `lavaan` package interprets in a second step. Once the model has been specified, we use the `sem()` function to 'fit' or 'estimate' the model. Notice a second object is made out of the fitted `lavaan` object. Here the fitted `lavaan` object has been named `rm1.fit`. 

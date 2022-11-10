@@ -1,6 +1,6 @@
 ---
 title: "Introduction to Structural Equation Modeling: Mediation and Path Analysis"
-author: "Henrik Kenneth Andersen"
+author: "Dr. Henrik Kenneth Andersen"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output: pdf_document
 header-includes:
@@ -129,7 +129,7 @@ Before moving on, let us conduct step 1 and establish whether a bivariate effect
 
 We can run a bivariate regression in `lavaan` just like the multivariate regression seen previously. Remember, the variables are:
 
-- social class ($x_{1})$: subjective social class (`id02`)
+- social class ($x_{1}$): subjective social class (`id02`)
 - populism ($x_{2}$): "Politicians talk too much instead of acting [recoded]" (`pa30r`)
 - xenophobia ($y$): "There is a dangerous amount of foreigners living in Germany" (`px06`)
 
@@ -172,6 +172,7 @@ We can rewrite the model in the form of two simultaneous equations:
 \end{align}
 
 We can represent these equations using matrix notation, which you will often encounter in SEM textbooks. In a more general form, we would write 
+
 \begin{align}
 \begin{bmatrix} y_{1} \\ y_{2} \end{bmatrix} & = 
 \begin{bmatrix} \beta_{1} & \beta_{2} \\ \beta_{3} & 0\end{bmatrix} 
@@ -206,6 +207,7 @@ The problem here is that $\bm{y} = (\text{xenophobia}, \text{populism})^{\interc
 Instead, we differentiate mainly between exogenous and endogenous variables and say $\bm{y} = (\text{xenophobia}, \text{populism})^{\intercal}$ and $\bm{x} = (\text{class})$. Then we represent the matrix of coefficients coming from the endogenous variables themselves as $\bm{B}$ (uppercase 'beta'), the matrix of coefficients coming from the exogenous variable $\bm{\Gamma}$ (uppercase 'gamma') and we rename the errors $\zeta$ because $\epsilon$ is normally reserved for measurement error, which we will discuss later. 
 
 Our equation thus changes to 
+
 \begin{align}
 \bm{y} & = \bm{B}\bm{y} + \bm{\Gamma}\bm{x} + \bm{\zeta} \\
 \begin{bmatrix} \text{xenophobia} \\ \text{populism} \end{bmatrix} & = 
@@ -541,6 +543,7 @@ y_{2} & = \tau_{2} + \gamma_{2}x_{1} + \zeta_{2}
 where $\E(\zeta_{1}) = \E(\zeta_{2}) = 0$. 
 
 In matrix notation, we could write 
+
 \begin{align}
 \bm{y} & = \bm{\tau} + \bm{B}\bm{y} + \bm{B}\bm{x} + \bm{\zeta} \\
 \begin{bmatrix} y_{1} \\ y_{2} \end{bmatrix} & = 
@@ -594,8 +597,9 @@ summary(mm1.fit)
 Notice as well that the degrees of freedom have not changed compared to the model without the mean structure. This may seem strange because we are estimating three extra parameters, the intercepts of both endogenous variables and the unconditional mean of the exogenous variable. However, *we gained just as many new pieces of information*, i.e., the observed mean vector. 
 
 In other words, the sample statistics we base our model on now consist of the mean vector and the covariance matrix. We sometimes call the mean vector $\bm{o}$ and so our observed information is comprised of:
+
 \begin{align}
-\bm{o} = \begin{bmatrix} \bar{y}_{1} \\ \bar{y}_{2} \\ \bar{x}_{1} \end{bmatrix}, & \ 
+\bm{o} = \begin{bmatrix} \bar{y}_{1} \\ \bar{y}_{2} \\ \bar{x}_{1} \end{bmatrix}, & \\ 
 \bm{S} = \begin{bmatrix} \var(y_{1}) & & \\ \cov(y_{2}, y_{1}) & \var(y_{2}) & \\ \cov(x_{1}, y_{1}) & \cov(x_{1}, y_{2}) & \var(x_{1}) \end{bmatrix}.
 \end{align}
 

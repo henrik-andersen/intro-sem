@@ -1,7 +1,8 @@
 ---
 title: "Einführung in SEM"
 subtitle: "Übung 4"
-author: "Henrik Kenneth Andersen"
+author: "Dr. Henrik K. Andersen"
+date: "Oktober 2022"
 output: learnr::tutorial
 runtime: shiny_prerendered
 ---
@@ -12,6 +13,24 @@ library(haven)
 library(lavaan)
 knitr::opts_chunk$set(echo = FALSE)
 df <- read_sav("data/allbus2018.sav")
+
+# Export function from Denis Cohen
+export <- function(env = environment()) {
+  invisible({
+    global_obj <- eval(global_objects, envir = globalenv())
+    local_obj <- ls(envir = env)
+    new_obj <- local_obj[!(local_obj %in% global_obj)]
+    sapply(new_obj, function(x) {
+      assign(x, get(eval(x, envir = env), envir = env), envir = globalenv())
+    })
+  })
+  if (!is.null(new_obj)){
+    cat("Exported objects:\n")
+    cat(paste(new_obj, sep = ";; "))
+  }
+}
+
+global_objects <- c(ls(), "global_objects")
 ```
 
 ## Das generelle SEM 
@@ -77,7 +96,8 @@ library(lavaan)
 Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells mit standardisierten Lösungen und Fitmaße an. 
 
 ```{r estimate1, exercise=TRUE}
-# Bitte nennen Sie das Objekt m1 und das gefittete Modell m1.fit. 
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r estimate1-solution}
@@ -218,7 +238,8 @@ modindices(m1.fit, sort = TRUE, minimum.value = 100) # "minimum.value" kann nach
 Modifizieren Sie die CFA um das Modellfit sowie die Validität und Reliabilität zu erhöhen.
 
 ```{r modify, exercise=TRUE}
-# Bitte nennen Sie das Objekt m2 und das gefittete Modell m2.fit. 
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r modify-solution}
@@ -267,7 +288,8 @@ semPaths(mx.fit, style = "lisrel", rotation = 2, sizeMan = 6, sizeLat = 10, nCha
 Schätzen Sie das Modell und fordern Sie eine Zusammenfassung mit standardisierten Lösungen und Fitmaße an.
 
 ```{r fullsem, exercise=TRUE}
-# Bitte nennen Sie das Objekt m3 und das gefittete Modell m3.fit. 
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r fullsem-solution}
@@ -379,7 +401,8 @@ semPaths(mxxx.fit, style = "lisrel", rotation = 1, layout = "tree2",
 ```
 
 ```{r mimic, exercise=TRUE}
-# Bitte nennen Sie das Objekt m4 und das gefittete Modell m4.fit. 
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r mimic-solution}

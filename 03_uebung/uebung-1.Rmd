@@ -1,7 +1,8 @@
 ---
 title: "Einführung in SEM"
 subtitle: "Übung 1"
-author: "Henrik Kenneth Andersen"
+author: "Dr. Henrik K. Andersen"
+date: "Oktober 2022"
 output: learnr::tutorial
 runtime: shiny_prerendered
 ---
@@ -12,6 +13,24 @@ library(haven)
 library(lavaan)
 knitr::opts_chunk$set(echo = FALSE)
 df <- read_sav("data/allbus2018.sav")
+
+# Export function from Denis Cohen
+export <- function(env = environment()) {
+  invisible({
+    global_obj <- eval(global_objects, envir = globalenv())
+    local_obj <- ls(envir = env)
+    new_obj <- local_obj[!(local_obj %in% global_obj)]
+    sapply(new_obj, function(x) {
+      assign(x, get(eval(x, envir = env), envir = env), envir = globalenv())
+    })
+  })
+  if (!is.null(new_obj)){
+    cat("Exported objects:\n")
+    cat(paste(new_obj, sep = ";; "))
+  }
+}
+
+global_objects <- c(ls(), "global_objects")
 ```
 
 ## Multivariate Regressionsmodelle
@@ -55,6 +74,8 @@ Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an.
 
 ```{r estimate, exercise=TRUE}
 
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r estimate-solution}

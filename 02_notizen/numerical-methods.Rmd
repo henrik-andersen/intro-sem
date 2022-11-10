@@ -1,6 +1,6 @@
 ---
 title: "Numerical methods"
-author: "Henrik Kenneth Andersen"
+author: "Dr. Henrik Kenneth Andersen"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output: pdf_document
 ---

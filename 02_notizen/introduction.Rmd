@@ -1,6 +1,6 @@
 ---
 title: "Introduction to Structural Equation Modeling"
-author: "Henrik Kenneth Andersen"
+author: "Dr. Henrik Kenneth Andersen"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output: pdf_document
 header-includes:
@@ -68,10 +68,10 @@ library(haven)
 library(lavaan)
 
 # Set working directory 
-setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+setwd("F:/github-projects/intro-sem")
 
 # Import ALLBUS 2018 
-df <- readRDS("allbus_2018_small.rda")
+df <- readRDS("04_data/allbus_2018_small.rda")
 
 m4 <- '
 xeno =~ 1*px06 + px07 + px10 + pa09 + pa19

@@ -1,7 +1,7 @@
 ---
 title: "Einführung in Strukturgleichungsmodelle"
 subtitle: "Das Generelle Strukturgleichungsmodell"
-author: "Henrik Kenneth Andersen"
+author: "Dr. Henrik Kenneth Andersen"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output: 
   slidy_presentation:
@@ -72,10 +72,10 @@ library(haven)
 library(lavaan)
 
 # Set working directory 
-setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data")
+setwd("F:/github-projects/intro-sem")
 
 # Import ALLBUS 2018 
-df <- read_sav("allbus2018.sav")
+df <- read_sav("04_data/allbus2018.sav")
 
 m4 <- '
 xeno =~ 1*px06 + px07 + px10 + pa09 + pa19
@@ -484,10 +484,10 @@ library(haven)
 library(lavaan)
 
 # Arbeitsverzeichnis 
-setwd("C:/Users/Henrik/github_projects/sem-methodentage-uni-giessen/data") # Anpassen!
+setwd("F:/github-projects/intro-sem") # Anpassen!
 
 # Daten importieren  
-df <- read_sav("allbus2018.sav")
+df <- read_sav("04_data/allbus2018.sav")
 ```
 
 ---

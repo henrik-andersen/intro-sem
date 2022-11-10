@@ -1,8 +1,8 @@
 ---
 title: "Einführung in SEM"
 subtitle: "Übung 2"
-author: "Henrik Kenneth Andersen"
-date: "12.10.2021"
+author: "Dr. Henrik K. Andersen"
+date: "Oktober 2022"
 output: html_document
 ---
 

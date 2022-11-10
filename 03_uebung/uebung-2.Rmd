@@ -1,7 +1,8 @@
 ---
 title: "Einführung in SEM"
 subtitle: "Übung 2"
-author: "Henrik Kenneth Andersen"
+author: "Dr. Henrik K. Andersen"
+date: "Oktober 2022"
 output: learnr::tutorial
 runtime: shiny_prerendered
 ---
@@ -12,6 +13,24 @@ library(haven)
 library(lavaan)
 knitr::opts_chunk$set(echo = FALSE)
 df <- read_sav("data/allbus2018.sav")
+
+# Export function from Denis Cohen
+export <- function(env = environment()) {
+  invisible({
+    global_obj <- eval(global_objects, envir = globalenv())
+    local_obj <- ls(envir = env)
+    new_obj <- local_obj[!(local_obj %in% global_obj)]
+    sapply(new_obj, function(x) {
+      assign(x, get(eval(x, envir = env), envir = env), envir = globalenv())
+    })
+  })
+  if (!is.null(new_obj)){
+    cat("Exported objects:\n")
+    cat(paste(new_obj, sep = ";; "))
+  }
+}
+
+global_objects <- c(ls(), "global_objects")
 ```
 
 ## Mediationsmodelle
@@ -53,7 +72,9 @@ head(df$inc); hist(df$inc)
 Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
 
 ```{r estimate1, exercise=TRUE}
-# Bitte nennen Sie das Objekt m1 und das gefittete Modell m1.fit. 
+
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r estimate1-solution}
@@ -100,7 +121,10 @@ head(df$pa31r)
 Schätzen Sie das Modell und fordern Sie eine Zusammenfassung des Modells an. 
 
 ```{r estimate, exercise=TRUE}
-# Bitte nennen Sie das Objekt m2 und das gefittete Modell m2.fit. 
+
+
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r estimate-solution}
@@ -125,7 +149,10 @@ Interpretieren Sie die Regressionskoeffizienten.
 Erweitern Sie das Mediationsmodell in dem Sie den direkten und den indirekten Effekt von `inc1000` auf `px06` definieren. 
 
 ```{r estimate2, exercise=TRUE}
-# Bitte nennen Sie das Objekt m3 und das gefittete Modell m3.fit. 
+
+
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r estimate2-solution}
@@ -148,7 +175,10 @@ summary(m3.fit)
 Schätzen Sie das Modell mit Mittelwertstruktur.
 
 ```{r estimate-int, exercise=TRUE}
-# Bitte nennen Sie das Objekt m4 und das gefittete Modell m4.fit. 
+
+
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r estimate-int-solution}
@@ -236,7 +266,10 @@ semPaths(m4.fit,
 Schätzen Sie das zweite Modell (`m2`) erneut diesmal getrennt für Männer und Frauen (Variable `frau`). Dazu müssen Sie die Labels von `m2` entweder entfernen oder getrennte Labels für die Gruppen verwenden (z.B., `c(label1, label2)`). 
 
 ```{r multigroup, exercise=TRUE, exercise.setup="setuppath"}
-# Bitte nennen Sie das Objekt m5 und das gefittete Modell m5.fit. 
+
+
+# Exportiere das lavaan Modell
+export(environment())
 ```
 
 ```{r multigroup-solution}
